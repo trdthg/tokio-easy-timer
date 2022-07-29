@@ -1,22 +1,22 @@
 mod ext_map;
 mod job;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use ext_map::{Data, DebugAny, Extensions};
 use interval::{Interval, TimeUnits};
-use job::Job;
+use job::{Handler, Job};
 use parking_lot::Mutex;
 pub mod interval;
 
 struct Sheduler {
-    jobs: Vec<Box<Job<Box<dyn DebugAny>>>>,
+    // jobs: Vec<Box<dyn Handler>>,
     extensions: Extensions,
 }
 impl Sheduler {
     pub fn new() -> Self {
         Self {
             extensions: Extensions::default(),
-            jobs: vec![],
+            // jobs: vec![],
         }
     }
 
@@ -49,22 +49,36 @@ struct Config {
 #[derive(Default, Debug)]
 struct Database;
 
+fn a(config: Data<Mutex<Config>>) {
+    let mut config = config.lock();
+    config.id += 1;
+}
+
 fn main() {
-    let mut sheduler = Sheduler::new();
-    let config = Mutex::new(Config { id: 1 });
+    let sheduler = Sheduler::new();
+
+    let config = Arc::new(Mutex::new(Config { id: 1 }));
     sheduler.add_ext(config);
+    sheduler.add_ext("a".to_string());
+    sheduler.add_ext(1);
     sheduler.add_ext(Database {});
 
-    Job::new(1.hours(), sheduler.extensions.clone()).run(
-        |config: Data<(Mutex<Config>, String)>| {
-            let mut config = config.0.lock();
-            config.id += 1;
-        },
-    );
+    Job::new(1.hours(), sheduler.extensions.clone()).run(|config: Data<Arc<Mutex<Config>>>| {
+        let mut config = config.lock();
+        config.id += 1;
+    });
 
-    Job::new(1.hours(), sheduler.extensions.clone()).run(|config: Data<Mutex<Config>>| {
-        let config = config.lock();
-        println!("{}", config.id)
+    Job::new(1.hours(), sheduler.extensions.clone()).run(|config: Data<Arc<Mutex<Config>>>| {
+        println!("{}", config.lock().id);
+    });
+
+    Job::new(1.hours(), sheduler.extensions.clone()).run(|| {});
+    Job::new(1.hours(), sheduler.extensions.clone()).run(|a: Data<i32>| {
+        println!("{}", a.into_inner());
+    });
+    Job::new(1.hours(), sheduler.extensions.clone()).run(|a: Data<i32>, b: Data<i32>| {
+        println!("{}", a.into_inner());
+        println!("{}", b.into_inner());
     });
 
     // sheduler
@@ -75,7 +89,7 @@ fn main() {
     //         println!("1");
     //     });
 
-    sheduler.start();
+    // sheduler.start();
 
     // sheduler.run(|config: Data<Mutex<Config>>| {
     //     let config = config.lock();

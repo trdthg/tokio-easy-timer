@@ -3,6 +3,11 @@ use std::{ops::Deref, sync::Arc};
 #[derive(Debug)]
 pub struct Data<T: ?Sized>(Arc<T>);
 
+impl<T: ?Sized> Clone for Data<T> {
+    fn clone(&self) -> Data<T> {
+        Data(self.0.clone())
+    }
+}
 impl<T> Data<T> {
     /// Create new `Data` instance.
     pub fn new(state: T) -> Data<T> {
@@ -27,12 +32,6 @@ impl<T: ?Sized> Deref for Data<T> {
 
     fn deref(&self) -> &Arc<T> {
         &self.0
-    }
-}
-
-impl<T: ?Sized> Clone for Data<T> {
-    fn clone(&self) -> Data<T> {
-        Data(self.0.clone())
     }
 }
 

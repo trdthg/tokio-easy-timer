@@ -1,53 +1,65 @@
-use std::{fmt::Debug, future::Future, marker::PhantomData};
+use std::fmt::Debug;
 
 use crate::{
     ext_map::{Data, DebugAny, Extensions},
     interval::Interval,
 };
 
-// pub trait Handler<Args>: 'static {
-//     fn call(&self, args: Args);
-// }
-pub struct Job<Args> {
-    pub extensions: Extensions,
-    pub interval: Interval,
-    pub handler: Option<Box<dyn Fn(Data<Args>)>>,
-    _phantom: PhantomData<Args>,
+pub trait Handler<Args> {
+    fn call(&self, e: &Extensions);
 }
 
-// type BoxedFnOnce = Box<dyn FnOnce(Box<&dyn DebugAny>)>;
+impl<F> Handler<()> for F
+where
+    F: Fn(),
+{
+    fn call(&self, _e: &Extensions) {
+        self()
+    }
+}
 
-// impl<Args: 'static + DebugAny> Handler<Args> for Box<dyn FnOnce(Args)> {
-//     fn call(&self, args: Args) {
-//         self.as_mut()(args)
-//     }
-// }
+impl<F, P1> Handler<Data<P1>> for F
+where
+    P1: Clone + 'static + Debug,
+    F: Fn(Data<P1>),
+{
+    fn call(&self, e: &Extensions) {
+        let p1 = e.get_data::<P1>();
+        self(p1)
+    }
+}
 
-impl<Args> Job<Args> {
+impl<F, P1, P2> Handler<(Data<P1>, Data<P2>)> for F
+where
+    P1: Clone + 'static + Debug + Send + Sync,
+    P2: Clone + 'static + Debug + Send + Sync,
+    F: Fn(Data<P1>, Data<P2>),
+{
+    fn call(&self, e: &Extensions) {
+        let p1 = e.get_data::<P1>();
+        let p2 = e.get_data::<P2>();
+        self(p1, p2)
+    }
+}
+
+pub struct Job {
+    pub extensions: Extensions,
+    pub interval: Interval,
+}
+
+impl Job {
     pub fn new(interval: Interval, extensions: Extensions) -> Self {
         Self {
             interval,
             extensions,
-            handler: None,
-            _phantom: PhantomData,
         }
     }
 
-    pub fn run<F>(&mut self, handler: F)
+    pub fn run<Params, F>(&self, f: F)
     where
-        F: Fn(Data<Args>) + 'static + Clone,
-        Args: Send + Sync + 'static + DebugAny + Default,
+        Params: Clone + 'static + Debug,
+        F: Handler<Params>,
     {
-        self.handler = Some(Box::new(handler));
-        let args = self.extensions.get_data::<Args>();
-        let f = self.handler.as_deref().unwrap();
-        f(args)
-
-        // .map(|f| f.as_ref()(args));
-        // self.handler.map(|handler| {
-        //     //
-        //     let handler = handler.as_ref().clone();
-        //     handler(args)
-        // });
+        f.call(&self.extensions);
     }
 }

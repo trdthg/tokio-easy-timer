@@ -31,44 +31,43 @@ impl Extensions {
     where
         T: DebugAny + 'static,
     {
-        self.map
-            .write()
-            .insert(TypeKey::of::<T>(), Box::new(Data::new(data)));
+        let key = TypeKey::of::<T>();
+        println!("key: {:?}", key);
+
+        self.map.write().insert(key, Box::new(Data::new(data)));
     }
 
-    pub fn get<T: Send + Sync + Debug + 'static>(&self) -> MappedRwLockReadGuard<'_, T>
-    where
-        T: Default,
-    {
-        self.ensure::<T>();
-        RwLockReadGuard::map(self.map.read(), |m| {
-            m.get(&TypeKey::of::<T>())
-                .and_then(|x| (*x).as_any().downcast_ref())
-                .unwrap()
-        })
-    }
+    // pub fn get<T: Send + Sync + Debug + 'static>(&self) -> MappedRwLockReadGuard<'_, T> {
+    //     self.ensure::<T>();
 
-    pub fn get_mut<T>(&self) -> MappedRwLockWriteGuard<'_, T>
-    where
-        T: Send + Sync + Debug + 'static + Default,
-    {
-        self.ensure::<T>();
-        RwLockWriteGuard::map(self.map.write(), |m| {
-            m.get_mut(&TypeKey::of::<T>())
-                .and_then(|x| (**x).as_any_mut().downcast_mut())
-                .unwrap()
-        })
-    }
+    //     RwLockReadGuard::map(self.map.read(), |m| {
+    //         m.get(&TypeKey::of::<T>())
+    //             .and_then(|x| (*x).as_any().downcast_ref())
+    //             .unwrap()
+    //     })
+    // }
 
-    fn ensure<T: Send + Sync + Default + Debug + 'static>(&self) {
+    // pub fn get_mut<T>(&self) -> MappedRwLockWriteGuard<'_, T>
+    // where
+    //     T: Send + Sync + Debug + 'static,
+    // {
+    //     self.ensure::<T>();
+    //     RwLockWriteGuard::map(self.map.write(), |m| {
+    //         m.get_mut(&TypeKey::of::<T>())
+    //             .and_then(|x| (**x).as_any_mut().downcast_mut())
+    //             .unwrap()
+    //     })
+    // }
+
+    fn ensure<T: Debug + 'static>(&self) {
         if self.map.read().get(&TypeKey::of::<T>()).is_none() {
-            self.insert(T::default());
+            // self.insert(T::default());
         }
     }
 
     pub fn get_data<T>(&self) -> Data<T>
     where
-        T: Send + Sync + Debug + 'static + Default,
+        T: Debug + 'static,
     {
         let key = TypeKey::of::<T>();
         self.ensure::<T>();

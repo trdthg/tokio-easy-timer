@@ -2,7 +2,7 @@ use std::any::{type_name, TypeId};
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 
-pub struct TypeKey(TypeId, &'static str);
+pub struct TypeKey(pub TypeId, pub &'static str);
 
 impl TypeKey {
     pub fn of<T: 'static>() -> Self {
