@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 parking_lot = "0.12"
+tokio = { version="1.5", features=["rt", "rt-multi-thread", "time", "macros"]}
+async-trait = "0.1"

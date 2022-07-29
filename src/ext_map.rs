@@ -23,13 +23,13 @@ impl<T: Any + Debug + 'static> DebugAny for T {
 
 #[derive(Default, Clone)]
 pub struct Extensions {
-    map: Arc<RwLock<HashMap<TypeKey, Box<dyn DebugAny>>>>,
+    map: Arc<RwLock<HashMap<TypeKey, Box<dyn DebugAny + Send + Sync>>>>,
 }
 
 impl Extensions {
     pub fn insert<T>(&self, data: T)
     where
-        T: DebugAny + 'static,
+        T: DebugAny + 'static + Send + Sync,
     {
         let key = TypeKey::of::<T>();
         println!("key: {:?}", key);
@@ -59,7 +59,7 @@ impl Extensions {
     //     })
     // }
 
-    fn ensure<T: Debug + 'static>(&self) {
+    fn ensure<T: DebugAny + 'static + Send + Sync>(&self) {
         if self.map.read().get(&TypeKey::of::<T>()).is_none() {
             // self.insert(T::default());
         }
@@ -67,7 +67,7 @@ impl Extensions {
 
     pub fn get_data<T>(&self) -> Data<T>
     where
-        T: Debug + 'static,
+        T: DebugAny + 'static + Send + Sync,
     {
         let key = TypeKey::of::<T>();
         self.ensure::<T>();
