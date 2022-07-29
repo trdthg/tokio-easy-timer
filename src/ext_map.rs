@@ -4,7 +4,7 @@ pub use data::Data;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
-use std::{any::Any, collections::HashMap, fmt::Debug};
+use std::{any::Any, collections::HashMap, fmt::Debug, sync::Arc};
 use type_key::TypeKey;
 
 pub trait DebugAny: Any + Debug {
@@ -21,10 +21,11 @@ impl<T: Any + Debug + 'static> DebugAny for T {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Extensions {
-    map: RwLock<HashMap<TypeKey, Box<dyn DebugAny>>>,
+    map: Arc<RwLock<HashMap<TypeKey, Box<dyn DebugAny>>>>,
 }
+
 impl Extensions {
     pub fn insert<T>(&self, data: T)
     where
