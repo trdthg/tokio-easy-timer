@@ -2,11 +2,11 @@ use crate::extensions::{DebugAny, Extensions};
 use crate::job::Job;
 
 pub type BoxedJob = Box<dyn Job + Send + Sync + 'static>;
-pub struct Sheduler {
+pub struct Scheduler {
     jobs: Vec<BoxedJob>,
     extensions: Extensions,
 }
-impl Sheduler {
+impl Scheduler {
     pub fn new() -> Self {
         Self {
             extensions: Extensions::default(),
@@ -26,10 +26,6 @@ impl Sheduler {
         self
     }
 
-    // pub fn every(&self, interval: Interval) -> Job {
-    //     Job::new(interval, self.extensions.clone())
-    // }
-
     pub async fn start(self) {
         let mut hans = vec![];
         for job in self.jobs.into_iter() {
@@ -40,7 +36,9 @@ impl Sheduler {
             hans.push(t);
         }
         for t in hans {
-            t.await;
+            if let Err(e) = t.await {
+
+            }
         }
     }
 }

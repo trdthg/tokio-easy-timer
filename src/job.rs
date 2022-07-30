@@ -7,7 +7,8 @@ use cron::Schedule;
 use crate::{
     extensions::{Data, DebugAny, Extensions},
     interval::Interval,
-    Sheduler,
+    scheduler::BoxedJob,
+    Scheduler,
 };
 
 use self::async_handler::AsyncHandler;
@@ -20,124 +21,158 @@ pub trait Job {
 }
 
 pub struct SyncJob<Args, F> {
-    pub f: F,
-    pub schedules: Vec<Schedule>,
-    repeat: usize,
+    f: F,
+    schedules: Vec<JobSchedule>,
     _phantom: PhantomData<Args>,
+}
+
+#[derive(Clone)]
+pub struct JobSchedule {
+    since: chrono::DateTime<chrono::Local>,
+    schedule: Schedule,
+    repeat: u32,
+    interval: u64,
+}
+
+pub struct JobScheduleBuilder {
+    since: (u32, u32, u32),
+    cron: Vec<String>,
+    repeat: u32,
+    interval: u64,
 }
 
 pub struct JobBuilder<Args, F> {
     f: Option<F>,
-    schedules: Vec<Schedule>,
-    tmp_interval: Vec<String>,
-    repeat: Option<usize>,
+    schedules: Vec<JobSchedule>,
+    builder: JobScheduleBuilder,
     _phantom: PhantomData<Args>,
 }
 
-impl<Args, F> JobBuilder<Args, F> {
-    pub fn build(self) -> crate::scheduler::BoxedJob
-    where
-        Args: Clone + 'static + Debug + Send + Sync,
-        F: Handler<Args> + Send + Sync + Copy + 'static,
-    {
-        Box::new(SyncJob {
-            f: self.f.unwrap(),
-            repeat: self.repeat.unwrap(),
-            _phantom: PhantomData,
-            schedules: self.schedules,
-        })
-    }
+macro_rules! every_start {
+    ($( {$Varient: ident, $Index: expr} ),*) => {
+        impl<Args, F> JobBuilder<Args, F> {
+            pub fn every(mut self, interval: Interval) -> Self {
+                match interval {
+                    $(
+                        Interval::$Varient(x) => {
+                            if let Some((start, _)) = self.builder.cron[$Index].split_once("/") {
+                                self.builder.cron[$Index] = format!("{}/{}", start, x);
+                            } else {
+                                self.builder.cron[$Index] = format!("0/{}", x);
+                            }
+                        }
+                    )*
+                    Interval::Sunday => {
+                        // Sun
+                        self.builder.cron[5] = "1".to_string();
+                    }
+                    Interval::Monday => {
+                        // Mon
+                        self.builder.cron[5] = "2".to_string();
+                    }
+                    Interval::Tuesday => {
+                        // Tue
+                        self.builder.cron[5] = "3".to_string();
+                    }
+                    Interval::Wednesday => {
+                        // Wed
+                        self.builder.cron[5] = "4".to_string();
+                    }
+                    Interval::Thursday => {
+                        // Thu
+                        self.builder.cron[5] = "5".to_string();
+                    }
+                    Interval::Friday => {
+                        // Fri
+                        self.builder.cron[5] = "6".to_string();
+                    }
+                    Interval::Saturday => {
+                        // Sat
+                        self.builder.cron[5] = "7".to_string();
+                    }
+                    Interval::Weekday => {
+                        self.builder.cron[5] = "2-6".to_string();
+                    }
+                }
+                self
+            }
 
-    pub fn every(mut self, interval: Interval) -> Self {
-        match interval {
-            Interval::Days(x) => {
-                self.tmp_interval[3] = x.to_string();
+            pub fn since(mut self, interval: Interval) -> Self {
+                match interval {
+                    $(
+                        Interval::$Varient(x) => {
+                            if let Some((_, increase)) = self.builder.cron[$Index].split_once("/") {
+                                self.builder.cron[$Index] = format!("{}/{}", x, increase);
+                            } else {
+                                self.builder.cron[$Index] = format!("{}", x);
+                            }
+                        }
+                    )*
+                    _ => unimplemented!(),
+                }
+                self
             }
-            Interval::Weeks(x) => {
-                self.tmp_interval[4] = x.to_string();
-            }
-            Interval::Monday => {
-                self.tmp_interval[5] = "Mon".to_string();
-            }
-            Interval::Tuesday => {
-                self.tmp_interval[5] = "Tue".to_string();
-            }
-            Interval::Wednesday => {
-                self.tmp_interval[5] = "Wed".to_string();
-            }
-            Interval::Thursday => {
-                self.tmp_interval[5] = "Sec".to_string();
-            }
-            Interval::Friday => {
-                self.tmp_interval[5] = "Fir".to_string();
-            }
-            Interval::Saturday => {
-                self.tmp_interval[5] = "Sat".to_string();
-            }
-            Interval::Sunday => {
-                self.tmp_interval[5] = "Sun".to_string();
-            }
-            Interval::Weekday => {
-                self.tmp_interval[5] = "Mon-Fir".to_string();
-            }
-            Interval::Seconds(x) => {
-                self.tmp_interval[0] = x.to_string();
-            }
-            Interval::Minutes(x) => {
-                self.tmp_interval[1] = x.to_string();
-            }
-            Interval::Hours(x) => {
-                self.tmp_interval[2] = x.to_string();
-            }
+
         }
-        self
-    }
+    };
+}
 
+every_start!({Seconds, 0}, {Minutes, 1}, {Hours, 2}, {Days, 3}, {Weeks, 4});
+
+impl<Args, F> JobBuilder<Args, F> {
     pub fn next(mut self) -> Self {
-        let s = self.tmp_interval.iter().as_slice().concat();
-        let s = Schedule::from_str(s.as_str()).expect("不合法");
-        self.schedules.push(s);
-        self.tmp_interval = vec![
-            "*".to_string(),
-            "*".to_string(),
-            "*".to_string(),
-            "*".to_string(),
-            "*".to_string(),
-            "*".to_string(),
-            "*".to_string(),
-        ];
+        self.schedules.push(self.builder.build());
+        self.builder = JobScheduleBuilder::new();
         self
     }
 
-    fn at(mut self, interval: Interval) -> Self {
+    pub fn at(mut self, interval: Interval) -> Self {
         match interval {
             Interval::Seconds(x) => {
-                self.tmp_interval[0] = x.to_string();
+                self.builder.cron[0] = x.to_string();
             }
             Interval::Minutes(x) => {
-                self.tmp_interval[1] = x.to_string();
+                self.builder.cron[1] = x.to_string();
             }
             Interval::Hours(x) => {
-                self.tmp_interval[2] = x.to_string();
+                self.builder.cron[2] = x.to_string();
             }
             _ => {}
         }
         self
     }
 
-    pub fn repeat(mut self, n: usize) -> Self {
-        self.repeat = Some(n);
+    pub fn at_time(mut self, hour: u32, min: u32, sec: u32) -> Self {
+        self.builder.cron[0] = sec.to_string();
+        self.builder.cron[1] = min.to_string();
+        self.builder.cron[2] = hour.to_string();
         self
     }
 
-    pub fn run<Params>(mut self, f: F) -> Self
+    pub fn since_time(mut self, hour: u32, min: u32, sec: u32) -> Self {
+        self.builder.since = (hour, min, sec);
+        self
+    }
+
+    pub fn repeat(mut self, n: u32, interval: Interval) -> Self {
+        self.builder.repeat = n;
+        self.builder.interval = interval.to_sec();
+        self
+    }
+
+    pub fn run(mut self, f: F) -> BoxedJob
     where
-        Params: Clone + 'static + Debug,
-        F: Handler<Params>,
+        Args: Clone + 'static + Debug + Send + Sync,
+        F: Handler<Args> + Send + Sync + Copy + 'static,
     {
         self = self.next();
         self.f = Some(f);
-        self
+        // self
+        Box::new(SyncJob {
+            f: self.f.unwrap(),
+            _phantom: PhantomData,
+            schedules: self.schedules,
+        })
     }
 }
 
@@ -148,20 +183,37 @@ where
     Args: Clone + 'static + Debug + Send + Sync,
 {
     async fn start_schedule(&self, e: Extensions) {
-        println!("被调度了");
         let mut han = vec![];
         for shedule in self.schedules.iter() {
             let f = self.f.clone();
             let e = e.clone();
             let shedule = shedule.clone();
             let t = tokio::spawn(async move {
-                for next in shedule.upcoming(chrono::Local) {
+                let now = chrono::Local::now();
+                let wait_to = shedule.since;
+                let d = wait_to - now;
+                tokio::time::sleep(Duration::from_secs(d.num_seconds() as u64)).await;
+                for next in shedule.schedule.upcoming(chrono::Local) {
+                    let now = chrono::Local::now();
+                    // println!("{}", next);
+                    // println!("{}", now);
+                    if next < now {
+                        continue;
+                    }
+                    let d: i64 = next.timestamp() - now.timestamp();
+                    println!("还差 {} 秒", d);
+
                     let f = f.clone();
                     let e = e.clone();
                     tokio::spawn(async move {
-                        f.call(e);
+                        tokio::time::sleep(Duration::from_secs(d as u64 - shedule.interval)).await;
+                        for _ in 0..shedule.repeat {
+                            tokio::time::sleep(Duration::from_secs(shedule.interval)).await;
+                            let e = e.clone();
+                            f.call(e);
+                        }
                     });
-                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    tokio::time::sleep(Duration::from_secs(d as u64)).await;
                 }
             });
             han.push(t);
@@ -176,42 +228,39 @@ impl<Args, F> SyncJob<Args, F> {
     pub fn new() -> JobBuilder<Args, F> {
         JobBuilder {
             f: None,
-            repeat: None,
             _phantom: PhantomData,
             schedules: vec![],
-            tmp_interval: vec![
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
+            builder: JobScheduleBuilder::new(),
+        }
+    }
+}
+impl JobScheduleBuilder {
+    fn new() -> Self {
+        Self {
+            since: (0, 0, 0),
+            cron: vec![
+                "0".to_string(), // sec
+                "0".to_string(), // min
+                "0".to_string(), // hour
+                "*".to_string(), // day
+                "*".to_string(), // week
+                "*".to_string(), // week
+                "*".to_string(), // year
             ],
+            repeat: 1,
+            interval: 1,
         }
     }
 
-    // pub fn run<Params>(&self, f: F)
-    // where
-    //     Params: Clone + 'static + Debug,
-    //     F: Handler<Params>,
-    // {
-    //     f.call(&self.extensions);
-    // }
-
-    // pub fn run_async<Params>(&self, f: F)
-    // where
-    //     Params: Clone + 'static + Debug,
-    //     F: Clone + Copy + Send + Sync + 'static + AsyncHandler<Params>,
-    // {
-    //     let f = f.clone();
-    //     let ext = self.extensions.clone();
-    //     tokio::spawn(async move {
-    //         loop {
-    //             let f = f.clone();
-    //             f.call(&ext).await;
-    //             tokio::time::sleep(Duration::from_secs(10)).await;
-    //         }
-    //     });
-    // }
+    fn build(&self) -> JobSchedule {
+        let s = self.cron.join(" ");
+        println!("Cron: {}", s);
+        let s = Schedule::from_str(s.as_str()).expect("cron 表达式不合法");
+        JobSchedule {
+            schedule: s,
+            repeat: self.repeat as u32,
+            interval: self.interval,
+            since: chrono::Local::now(),
+        }
+    }
 }
