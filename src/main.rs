@@ -28,35 +28,60 @@ async fn main() {
     cheduler.add_ext(Database {});
 
     cheduler
+        // .add(
+        //     SyncJob::new()
+        //         .every(Interval::Thursday)
+        //         .at_time(8, 0, 0)
+        //         .repeat(3, 30.seconds())
+        //         .next()
+        //         .every(Interval::Wednesday)
+        //         .at_time(20, 45, 30)
+        //         .run(|config: Data<Arc<Mutex<Config>>>| {
+        //             let mut config = config.lock();
+        //             config.id += 1;
+        //             println!("{}", config.id);
+        //         }),
+        // )
+        // .add(
+        //     SyncJob::new()
+        //         .every(Interval::Saturday)
+        //         .at_time(14, 13, 0)
+        //         .repeat(3, 5.seconds())
+        //         .next()
+        //         .every(Interval::Wednesday)
+        //         .at_time(20, 45, 30)
+        //         .run(|config: Data<Arc<Mutex<Config>>>| {
+        //             let mut config = config.lock();
+        //             config.id += 1;
+        //             println!("{}", config.id);
+        //         }),
+        // )
         .add(
             SyncJob::new()
                 .every(Interval::Saturday) // 每周六，0:0:0 执行一次
+                // .every(Interval::Sunday) // 每周六，0:0:0 执行一次
                 .next()
-                .every(Interval::Saturday) // 每周六，每隔 2 小时，运行一次 0:0:0 0:02:0 0:04:00
-                .every(2.hour())
-                .next()
-                .every(Interval::Saturday) // 每周六，每隔 2 小时，每分钟运行一次，持续 1 小时 0:0:0 0:0:0 0:1:0 0:2:0 2:0:0 2:1:0 2:2:0
-                .every(2.hour())
-                .every(1.minutes())
-                .next()
-                .every(Interval::Saturday) // 每周六，从 14 点 13 分 后，每隔 10 秒运行一次
-                .since_time(14, 13, 0)
-                .every(1.hour())
-                .every(1.minutes())
-                .every(10.seconds())
-                .repeat(2, 3.seconds())
-                .next()
-                .every(Interval::Saturday) // 每周六，从 14 点 13 分 后，每隔 90 秒，运行一次
-                .since_time(14, 13, 0) // 需要两个表达式
-                .every(1.hour())
-                .since(0.minutes()) // 从 0 开始，每隔 3 分钟，运行一次 0:00 3:00 6:00
-                .every(3.minutes())
-                .next()
-                .every(1.hour())
-                .since(30.seconds()) // 从 1 开始，每隔 3 分种，运行一次 1:30 4:30 7:30
-                .every(3.minutes())
-                .since(1.minutes())
-                // .at(20, 45, 30)
+                // .every(Interval::Saturday) // 每周六，每隔 2 小时，运行一次 0:0:0 0:02:0 0:04:00
+                // .every(2.hour())
+                // .next()
+                // .every(Interval::Saturday) // 每周六，每隔 2 小时，每分钟运行一次，持续 1 小时 0:0:0 0:0:0 0:1:0 0:2:0 2:0:0 2:1:0 2:2:0
+                // .every(2.hour())
+                // .every(1.minutes())
+                // .next()
+                // .every(Interval::Saturday) // 每周六，从 14 点 13 分 后，每隔 10 秒运行一次
+                // .since_time(14, 13, 0)
+                // .every(1.hour())
+                // .every(10.minutes())
+                // .repeat(2, 3.seconds())
+                // .next()
+                // .every(Interval::Saturday) // 每周六，从 14 点 13 分 后，每隔 90 秒，运行一次
+                // .since_time(14, 13, 0) // 需要两个表达式
+                // .every(1.hour())
+                // .since_every(0.minutes(), 3.minutes()) // 从 0 开始，每隔 3 分钟，运行一次 0:00 3:00 6:00
+                // .next()
+                // .every(1.hour())
+                // .since_every(1.minutes(), 3.minutes()) // 从 1 开始，每隔 3 分种，运行一次 1:30 4:30 7:30
+                // .at(30.seconds())
                 .run(|config: Data<Arc<Mutex<Config>>>| {
                     let mut config = config.lock();
                     config.id += 1;

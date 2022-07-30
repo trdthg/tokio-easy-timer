@@ -22,7 +22,7 @@ pub trait Job {
 
 pub struct SyncJob<Args, F> {
     f: F,
-    schedules: Vec<JobSchedule>,
+    jobschedules: Vec<JobSchedule>,
     _phantom: PhantomData<Args>,
 }
 
@@ -36,75 +36,59 @@ pub struct JobSchedule {
 
 pub struct JobScheduleBuilder {
     since: (u32, u32, u32),
-    cron: Vec<String>,
+    cron: Vec<Option<String>>,
     repeat: u32,
     interval: u64,
 }
 
 pub struct JobBuilder<Args, F> {
     f: Option<F>,
-    schedules: Vec<JobSchedule>,
+    jobschedules: Vec<JobSchedule>,
     builder: JobScheduleBuilder,
     _phantom: PhantomData<Args>,
 }
 
 macro_rules! every_start {
-    ($( {$Varient: ident, $Index: expr} ),*) => {
+    ($( {$Varient: ident, $Index: expr} ),* | $({$VarientWeek: ident, $I: expr} ),* ) => {
         impl<Args, F> JobBuilder<Args, F> {
-            pub fn every(mut self, interval: Interval) -> Self {
+
+            /// since 只重复一次
+            pub fn at(mut self, interval: Interval) -> Self {
                 match interval {
                     $(
                         Interval::$Varient(x) => {
-                            if let Some((start, _)) = self.builder.cron[$Index].split_once("/") {
-                                self.builder.cron[$Index] = format!("{}/{}", start, x);
+                            if let Some(s) = &self.builder.cron[$Index] {
+                                self.builder.cron[$Index] = Some(format!("{},{}", s, x));
                             } else {
-                                self.builder.cron[$Index] = format!("0/{}", x);
+                                self.builder.cron[$Index] = Some(format!("{}", x));
                             }
                         }
                     )*
-                    Interval::Sunday => {
-                        // Sun
-                        self.builder.cron[5] = "1".to_string();
-                    }
-                    Interval::Monday => {
-                        // Mon
-                        self.builder.cron[5] = "2".to_string();
-                    }
-                    Interval::Tuesday => {
-                        // Tue
-                        self.builder.cron[5] = "3".to_string();
-                    }
-                    Interval::Wednesday => {
-                        // Wed
-                        self.builder.cron[5] = "4".to_string();
-                    }
-                    Interval::Thursday => {
-                        // Thu
-                        self.builder.cron[5] = "5".to_string();
-                    }
-                    Interval::Friday => {
-                        // Fri
-                        self.builder.cron[5] = "6".to_string();
-                    }
-                    Interval::Saturday => {
-                        // Sat
-                        self.builder.cron[5] = "7".to_string();
-                    }
+                    $(
+                        Interval::$VarientWeek => {
+                            if let Some(s) = &self.builder.cron[5] {
+                                self.builder.cron[5] = Some(format!("{},{}", s, $I));
+                            } else {
+                                self.builder.cron[5] = Some(format!("{}", $I));
+                            }
+                        }
+                    )*
                     Interval::Weekday => {
-                        self.builder.cron[5] = "2-6".to_string();
+                        self.builder.cron[5] = Some("2-6".to_string());
                     }
                 }
                 self
             }
 
-            pub fn since(mut self, interval: Interval) -> Self {
-                match interval {
+            /// 重复，带有起始时间
+            pub fn since_every(mut self, start: Interval, interval: Interval) -> Self {
+                match (start, interval) {
                     $(
-                        Interval::$Varient(x) => {
-                            if let Some((_, increase)) = self.builder.cron[$Index].split_once("/") {
-                                self.builder.cron[$Index] = format!("{}/{}", x, increase);
+                        (Interval::$Varient(start), Interval::$Varient(interval)) => {
+                            if let Some(s) = &self.builder.cron[$Index] {
+                                self.builder.cron[$Index] = Some(format!("{},{}/{}", s, start, interval));
                             } else {
-                                self.builder.cron[$Index] = format!("{}", x);
+                                self.builder.cron[$Index] = Some(format!("{}/{}", start, interval));
                             }
                         }
                     )*
@@ -113,39 +97,55 @@ macro_rules! every_start {
                 self
             }
 
+            // every 不带起始时间
+            pub fn every(mut self, interval: Interval) -> Self {
+                match interval {
+                    $(
+                        Interval::$Varient(x) => {
+                            if let Some(s) = &self.builder.cron[$Index] {
+                                self.builder.cron[$Index] = Some(format!("{},{}", s, format!("0/{}", x)))
+                                // }
+                            } else {
+                                // 新增的，since 默认为 0
+                                self.builder.cron[$Index] = Some(format!("0/{}", x));
+                            }
+                        }
+                    )*
+                    $(
+                        Interval::$VarientWeek => {
+                            // Sun
+                            let week = format!("{}", $I);
+                            if let Some(s) = &self.builder.cron[5] {
+                                self.builder.cron[5] = Some(format!("{},{}", s, week));
+                            } else {
+                                self.builder.cron[5] = Some(week);
+                            }
+                        }
+                    )*
+                    Interval::Weekday => {
+                        self.builder.cron[5] = Some("2-6".to_string());
+                    }
+                }
+                self
+            }
+
         }
     };
 }
 
-every_start!({Seconds, 0}, {Minutes, 1}, {Hours, 2}, {Days, 3}, {Weeks, 4});
+every_start!({Seconds, 0}, {Minutes, 1}, {Hours, 2}, {Days, 3}, {Weeks, 4} | { Sunday, 1 }, { Monday, 2},  { Tuesday, 3 }, { Wednesday, 4 }, { Thursday, 5 }, { Friday, 6 }, { Saturday, 7 });
 
 impl<Args, F> JobBuilder<Args, F> {
     pub fn next(mut self) -> Self {
-        self.schedules.push(self.builder.build());
+        self.jobschedules.push(self.builder.build());
         self.builder = JobScheduleBuilder::new();
         self
     }
 
-    pub fn at(mut self, interval: Interval) -> Self {
-        match interval {
-            Interval::Seconds(x) => {
-                self.builder.cron[0] = x.to_string();
-            }
-            Interval::Minutes(x) => {
-                self.builder.cron[1] = x.to_string();
-            }
-            Interval::Hours(x) => {
-                self.builder.cron[2] = x.to_string();
-            }
-            _ => {}
-        }
-        self
-    }
-
     pub fn at_time(mut self, hour: u32, min: u32, sec: u32) -> Self {
-        self.builder.cron[0] = sec.to_string();
-        self.builder.cron[1] = min.to_string();
-        self.builder.cron[2] = hour.to_string();
+        self.builder.cron[0] = Some(sec.to_string());
+        self.builder.cron[1] = Some(min.to_string());
+        self.builder.cron[2] = Some(hour.to_string());
         self
     }
 
@@ -171,7 +171,7 @@ impl<Args, F> JobBuilder<Args, F> {
         Box::new(SyncJob {
             f: self.f.unwrap(),
             _phantom: PhantomData,
-            schedules: self.schedules,
+            jobschedules: self.jobschedules,
         })
     }
 }
@@ -184,31 +184,31 @@ where
 {
     async fn start_schedule(&self, e: Extensions) {
         let mut han = vec![];
-        for shedule in self.schedules.iter() {
+        for schedule in self.jobschedules.iter() {
             let f = self.f.clone();
             let e = e.clone();
-            let shedule = shedule.clone();
+            let schedule = schedule.clone();
             let t = tokio::spawn(async move {
                 let now = chrono::Local::now();
-                let wait_to = shedule.since;
+                let wait_to = schedule.since;
                 let d = wait_to - now;
                 tokio::time::sleep(Duration::from_secs(d.num_seconds() as u64)).await;
-                for next in shedule.schedule.upcoming(chrono::Local) {
+                for next in schedule.schedule.upcoming(chrono::Local) {
                     let now = chrono::Local::now();
-                    // println!("{}", next);
-                    // println!("{}", now);
+                    println!("{}", next);
+                    println!("{}", now);
                     if next < now {
                         continue;
                     }
                     let d: i64 = next.timestamp() - now.timestamp();
-                    println!("还差 {} 秒", d);
+                    println!("距离：{} 还差 {} 秒", next, d);
 
                     let f = f.clone();
                     let e = e.clone();
                     tokio::spawn(async move {
-                        tokio::time::sleep(Duration::from_secs(d as u64 - shedule.interval)).await;
-                        for _ in 0..shedule.repeat {
-                            tokio::time::sleep(Duration::from_secs(shedule.interval)).await;
+                        tokio::time::sleep(Duration::from_secs(d as u64 - schedule.interval)).await;
+                        for _ in 0..schedule.repeat {
+                            tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
                             let e = e.clone();
                             f.call(e);
                         }
@@ -229,7 +229,7 @@ impl<Args, F> SyncJob<Args, F> {
         JobBuilder {
             f: None,
             _phantom: PhantomData,
-            schedules: vec![],
+            jobschedules: vec![],
             builder: JobScheduleBuilder::new(),
         }
     }
@@ -239,13 +239,15 @@ impl JobScheduleBuilder {
         Self {
             since: (0, 0, 0),
             cron: vec![
-                "0".to_string(), // sec
-                "0".to_string(), // min
-                "0".to_string(), // hour
-                "*".to_string(), // day
-                "*".to_string(), // week
-                "*".to_string(), // week
-                "*".to_string(), // year
+                None, None, None, None, None, None,
+                None,
+                // "0".to_string(), // sec
+                // "0".to_string(), // min
+                // "0".to_string(), // hour
+                // "*".to_string(), // day
+                // "*".to_string(), // week
+                // "*".to_string(), // week
+                // "*".to_string(), // year
             ],
             repeat: 1,
             interval: 1,
@@ -253,7 +255,25 @@ impl JobScheduleBuilder {
     }
 
     fn build(&self) -> JobSchedule {
-        let s = self.cron.join(" ");
+        let mut cron = self.cron.clone();
+        for i in 0..6 {
+            if cron[i].is_some() && cron[i + 1].is_none() {
+                cron[i + 1] = Some("*".to_string())
+            }
+        }
+        let s = cron
+            .iter()
+            .enumerate()
+            .map(|(i, x)| {
+                // x.as_deref().unwrap_or("0")
+                x.as_deref().unwrap_or_else(|| match i {
+                    0 | 1 | 2 => "0",
+                    _ => "*",
+                })
+            })
+            .collect::<Vec<&str>>()
+            .join(" ");
+
         println!("Cron: {}", s);
         let s = Schedule::from_str(s.as_str()).expect("cron 表达式不合法");
         JobSchedule {
