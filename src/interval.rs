@@ -69,3 +69,213 @@ impl TimeUnits for u32 {
         Interval::Weeks(self)
     }
 }
+
+pub struct YearCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct WeekCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct MonthCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct DayCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct HourCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct MinCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+pub struct SecCron {
+    sec: Vec<u32>,
+    min: Vec<u32>,
+    hour: Vec<u32>,
+    day: Vec<u32>,
+    month: Vec<u32>,
+    week: Vec<u32>,
+    year: Vec<Option<u32>>,
+}
+impl YearCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn year(mut self, year: u32) -> WeekCron {
+        self.year.push(Some(year));
+        WeekCron {
+            sec: self.sec,
+            min: self.min,
+            hour: self.hour,
+            day: self.day,
+            month: self.month,
+            week: self.week,
+            year: self.year,
+        }
+    }
+}
+
+impl WeekCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn week(mut self, week: u32) -> MonthCron {
+        self.week.push(week);
+        MonthCron {
+            sec: self.sec,
+            min: self.min,
+            hour: self.hour,
+            day: self.day,
+            month: self.month,
+            week: self.week,
+            year: self.year,
+        }
+    }
+}
+
+impl MonthCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn day(mut self, day: u32) -> DayCron {
+        self.day.push(day);
+        DayCron {
+            sec: self.sec,
+            min: self.min,
+            hour: self.hour,
+            day: self.day,
+            month: self.month,
+            week: self.week,
+            year: self.year,
+        }
+    }
+}
+
+impl HourCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn week(mut self, hour: u32) -> HourCron {
+        self.hour.push(hour);
+        HourCron {
+            sec: self.sec,
+            min: self.min,
+            hour: self.hour,
+            day: self.day,
+            month: self.month,
+            week: self.week,
+            year: self.year,
+        }
+    }
+}
+
+impl MinCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn min(mut self, min: u32) -> SecCron {
+        self.min.push(min);
+        SecCron {
+            sec: self.sec,
+            min: self.min,
+            hour: self.hour,
+            day: self.day,
+            month: self.month,
+            week: self.week,
+            year: self.year,
+        }
+    }
+}
+
+impl SecCron {
+    pub fn new() -> Self {
+        Self {
+            sec: vec![],
+            min: vec![],
+            hour: vec![],
+            day: vec![],
+            month: vec![],
+            week: vec![],
+            year: vec![],
+        }
+    }
+    pub fn sec(mut self, sec: u32) {
+        self.sec.push(sec);
+    }
+}

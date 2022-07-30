@@ -1,4 +1,4 @@
-use crate::ext_map::{Data, Extensions};
+use crate::extensions::{Data, Extensions};
 use async_trait::async_trait;
 use std::{fmt::Debug, future::Future};
 #[async_trait]
