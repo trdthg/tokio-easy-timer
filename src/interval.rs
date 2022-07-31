@@ -8,8 +8,12 @@ pub enum Interval {
     Hours(u32),
     /// The next multiple of `n` days since the start of the start of the era
     Days(u32),
-    /// The next multiple of `n` week since the start of the start of the era
+    /// The next multiple of `n` months since the start of the start of the era
+    Months(u32),
+    /// The next multiple of `n` weeks since the start of the start of the era
     Weeks(u32),
+    /// The next multiple of `n` years since the start of the start of the era
+    Years(u32),
     /// Every Monday
     Monday,
     /// Every Tuesday
