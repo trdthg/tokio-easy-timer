@@ -1,5 +1,13 @@
-use std::sync::Arc;
+# tokio-easy-timer
 
+tokio-easy-timer is a tokio-based task scheduler, with a user-friendly API.
+
+Inspired by [clokwerk](https://github.com/mdsherry/clokwerk)
+
+# Usage
+
+```rs
+use std::sync::Arc;
 use parking_lot::Mutex;
 use tokio_easy_timer::prelude::*;
 
@@ -9,14 +17,16 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut cheduler = Scheduler::with_tz(chrono::FixedOffset::east(8 * 3600));
+    let mut cheduler = Scheduler::new();
 
+    // register some data that will be used later in task
     let config = Arc::new(Mutex::new(Config { id: 1 }));
     cheduler.add_ext(config);
     cheduler.add_ext("a".to_string());
     cheduler.add_ext(1);
 
-    for _ in 0..1000000 {
+    // add 10000 write tasks
+    for _ in 0..10000 {
         cheduler.add(AsyncJob::new().every(1.minutes()).run(
             |config: Data<Arc<Mutex<Config>>>| async move {
                 let mut config = config.lock();
@@ -25,6 +35,7 @@ async fn main() {
         ));
     }
 
+    // add one read tasks
     cheduler.add(AsyncJob::new().every(1.minutes()).run(
         |config: Data<Arc<Mutex<Config>>>| async move {
             let mut config = config.lock();
@@ -33,5 +44,7 @@ async fn main() {
         },
     ));
 
+    // start
     cheduler.start().await;
 }
+```

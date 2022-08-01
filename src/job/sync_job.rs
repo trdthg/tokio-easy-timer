@@ -57,13 +57,13 @@ where
                     let e = e.clone();
                     // 计算距离下次任务运行剩余的时间
                     let now = chrono::Local::now().with_timezone(&tz);
-                    println!("{:?}", next);
-                    println!("{:?}", now);
-                    if next < now {
+                    let d = next.timestamp() - now.timestamp();
+                    if d < 0 {
                         continue;
                     }
-                    let d = next.timestamp() - now.timestamp();
-                    println!("距离：{:?} 还差 {} 秒", next, d);
+                    // println!("{:?}", next);
+                    // println!("{:?}", now);
+                    // println!("距离：{:?} 还差 {} 秒", next, d);
 
                     // 开启新线程执行用户任务
                     tokio::time::sleep(Duration::from_secs(d as u64)).await;

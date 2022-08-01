@@ -50,7 +50,7 @@ impl JobScheduleBuilder {
             .collect::<Vec<&str>>()
             .join(" ");
 
-        println!("Cron: {}", s);
+        // println!("Cron: {}", s);
         let s = Schedule::from_str(s.as_str()).expect("cron 表达式不合法");
         JobSchedule {
             schedule: s,

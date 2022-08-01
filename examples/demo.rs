@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use tokio_sheduler::prelude::*;
+use tokio_easy_timer::prelude::*;
 
-#[derive(Default, Debug)]
 struct Config {
     id: i32,
 }
-
-struct Database;
 
 #[tokio::main]
 async fn main() {
@@ -18,7 +15,6 @@ async fn main() {
     cheduler.add_ext(config);
     cheduler.add_ext("a".to_string());
     cheduler.add_ext(1);
-    cheduler.add_ext(Database {});
 
     cheduler
         .add(

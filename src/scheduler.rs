@@ -14,7 +14,7 @@ where
 }
 
 impl Scheduler {
-    /// the default timezone is chrono::Local, if you want a specified timezone, please use `Scheduler::with_tz(Tz)`
+    /// the default timezone is chrono::Local, if you want a specified timezone, use `Scheduler::with_tz()` instead.
     pub fn new() -> Scheduler {
         Scheduler {
             extensions: Extensions::default(),
@@ -23,7 +23,7 @@ impl Scheduler {
         }
     }
 
-    /// if you want a specified timezone instead of the mathine timezone `chrono::Local`, please use this
+    /// if you want a specified timezone instead of the mathine timezone `chrono::Local`, use this
     pub fn with_tz<Tz: chrono::TimeZone>(tz: Tz) -> Scheduler<Tz> {
         Scheduler {
             extensions: Extensions::default(),
@@ -50,7 +50,7 @@ where
         self.extensions.insert(ext);
     }
 
-    /// add a new task to the scheduler, you must
+    /// add a new task to the scheduler, you must privide something that implements `Job` trait.
     pub fn add(&mut self, job: BoxedJob<Tz>) -> &mut Scheduler<Tz> {
         self.jobs.push(job);
         self
@@ -70,6 +70,7 @@ where
     //     self
     // }
 
+    /// Start the timer.
     pub async fn start(&self) {
         let mut hans = vec![];
         for job in self.jobs.iter() {
@@ -81,8 +82,11 @@ where
             });
             hans.push(t);
         }
+        println!("任务启动完成");
         for t in hans {
-            if let Err(e) = t.await {}
+            if let Err(e) = t.await {
+                //
+            }
         }
     }
 }

@@ -28,17 +28,15 @@ pub struct Extensions {
 
 impl Extensions {
     /// insert a type to the map, if already exists, then replace
-    pub fn insert<T>(&self, data: T)
+    pub(crate) fn insert<T>(&self, data: T)
     where
         T: 'static + Send + Sync,
     {
         let key = TypeKey::of::<T>();
-        println!("key: {:?}", key);
-
         self.map.write().insert(key, Box::new(Data::new(data)));
     }
 
-    pub fn get<T: Send + Sync + AsAny + 'static>(&self) -> MappedRwLockReadGuard<'_, T> {
+    pub(crate) fn get<T: Send + Sync + AsAny + 'static>(&self) -> MappedRwLockReadGuard<'_, T> {
         RwLockReadGuard::map(self.map.read(), |m| {
             m.get(&TypeKey::of::<T>())
                 .and_then(|x| (*x).as_any().downcast_ref())
@@ -46,7 +44,7 @@ impl Extensions {
         })
     }
 
-    pub fn get_mut<T>(&self) -> MappedRwLockWriteGuard<'_, T>
+    pub(crate) fn get_mut<T>(&self) -> MappedRwLockWriteGuard<'_, T>
     where
         T: Send + Sync + AsAny + 'static,
     {
@@ -58,7 +56,7 @@ impl Extensions {
     }
 
     /// check whether a type exists
-    fn has_type<T: AsAny + 'static + Send + Sync>(&self) -> bool {
+    pub(crate) fn has_type<T: AsAny + 'static + Send + Sync>(&self) -> bool {
         match self.map.read().get(&TypeKey::of::<T>()) {
             Some(_) => true,
             None => false,
@@ -66,7 +64,7 @@ impl Extensions {
     }
 
     /// this will panic if the required type doesn't exist
-    pub fn get_data<T>(&self) -> Data<T>
+    pub(crate) fn get_data<T>(&self) -> Data<T>
     where
         T: 'static + Send + Sync,
     {

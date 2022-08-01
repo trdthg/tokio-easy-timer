@@ -54,13 +54,11 @@ where
                 for next in schedule.schedule.upcoming(tz) {
                     // 计算距离下次任务运行剩余的时间
                     let now = chrono::Local::now().with_timezone(&tz);
-                    println!("{:?}", next);
-                    println!("{:?}", now);
                     if next < now {
                         continue;
                     }
                     let d = next.timestamp() - now.timestamp();
-                    println!("距离：{:?} 还差 {} 秒", next, d);
+                    // println!("距离：{:?} 还差 {} 秒", next, d);
 
                     // spawn 一个任务
                     let f = f.clone();

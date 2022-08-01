@@ -1,6 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 #[derive(Debug)]
+/// Data is just a wrapper for your data, it uses `Arc` internally.
 pub struct Data<T: ?Sized>(Arc<T>);
 
 impl<T: ?Sized> Clone for Data<T> {
@@ -10,7 +11,7 @@ impl<T: ?Sized> Clone for Data<T> {
 }
 impl<T> Data<T> {
     /// Create new `Data` instance.
-    pub fn new(state: T) -> Data<T> {
+    pub(crate) fn new(state: T) -> Data<T> {
         Data(Arc::new(state))
     }
 }
