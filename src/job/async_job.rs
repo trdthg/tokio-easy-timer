@@ -3,11 +3,7 @@ use std::{marker::PhantomData, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use chrono::TimeZone;
 
-use crate::{
-    extensions::{DebugAny, Extensions},
-    interval::Interval,
-    scheduler::BoxedJob,
-};
+use crate::{extensions::Extensions, interval::Interval, scheduler::BoxedJob};
 
 use super::{
     jobschedule::{JobSchedule, JobScheduleBuilder},
@@ -33,7 +29,7 @@ where
     Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
     <Tz as TimeZone>::Offset: Send + Sync,
     F: AsyncHandler<Args> + Send + Sync + 'static + Clone + Copy,
-    Args: Clone + 'static + DebugAny + Send + Sync,
+    Args: Clone + 'static + Send + Sync,
 {
     async fn start_schedule(&self, e: Extensions, tz: Tz) {
         let mut han = vec![];
@@ -72,16 +68,22 @@ where
                     tokio::spawn(async move {
                         // 一直等待到下次任务运行
                         tokio::time::sleep(Duration::from_secs(d as u64)).await;
-
-                        // 根据重复次数和间隔时间依次运行
                         for i in 0..schedule.repeat {
                             // 执行用户任务
-                            f.call(&e).await;
+                            if schedule.is_async {
+                                let e = e.clone();
+                                tokio::spawn(async move {
+                                    f.call(&e).await;
+                                });
+                            } else {
+                                f.call(&e).await;
+                            }
                             // 最后一次就不 sleep 了
-                            if i < schedule.repeat - 1 {
+                            if schedule.interval > 0 && i < schedule.repeat - 1 {
                                 tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
                             }
                         }
+                        // 根据重复次数和间隔时间依次运行
                     });
 
                     // 等到下次任务运行后继续
@@ -98,7 +100,7 @@ where
 
 impl<Args> AsyncJobBuilder<Args>
 where
-    Args: Clone + 'static + DebugAny + Send + Sync,
+    Args: Clone + 'static + Send + Sync,
 {
     pub fn run<Tz, F>(&mut self, f: F) -> BoxedJob<Tz>
     where
@@ -106,7 +108,7 @@ where
         Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
         <Tz as TimeZone>::Offset: Send + Sync,
     {
-        self.next();
+        self.and();
         Arc::new(AsyncJob {
             f,
             jobschedules: self.jobschedules.clone(),
@@ -124,15 +126,9 @@ impl<Args> JobBuilder<Args> for AsyncJobBuilder<Args> {
         }
     }
 
-    fn next(&mut self) -> &mut Self {
+    fn and(&mut self) -> &mut Self {
         self.jobschedules.push(self.builder.build());
         self.builder = JobScheduleBuilder::new();
-        self
-    }
-
-    fn repeat(&mut self, n: u32, interval: Interval) -> &mut Self {
-        self.builder.repeat = n;
-        self.builder.interval = interval.to_sec();
         self
     }
 
@@ -168,6 +164,19 @@ impl<Args> JobBuilder<Args> for AsyncJobBuilder<Args> {
         sec: u32,
     ) -> &mut Self {
         self.builder.since = (year, month, day, hour, min, sec);
+        self
+    }
+
+    fn repeat_seq(&mut self, n: u32, interval: Interval) -> &mut Self {
+        self.builder.repeat = n;
+        self.builder.interval = interval.to_sec();
+        self
+    }
+
+    fn repeat_async(&mut self, n: u32, interval: Interval) -> &mut Self {
+        self.builder.is_async = true;
+        self.builder.repeat = n;
+        self.builder.interval = interval.to_sec();
         self
     }
 }

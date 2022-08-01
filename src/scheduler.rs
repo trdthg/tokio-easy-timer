@@ -1,16 +1,7 @@
-use std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use chrono::{FixedOffset, TimeZone};
-
-use crate::job::{AsyncHandler, Job};
-use crate::{
-    extensions::{DebugAny, Extensions},
-    job::SyncJob,
-};
+use crate::extensions::Extensions;
+use crate::job::Job;
 
 pub type BoxedJob<Tz> = Arc<dyn Job<Tz> + Send + Sync + 'static>;
 pub struct Scheduler<Tz = chrono::Local>
@@ -23,6 +14,7 @@ where
 }
 
 impl Scheduler {
+    /// the default timezone is chrono::Local, if you want a specified timezone, please use `Scheduler::with_tz(Tz)`
     pub fn new() -> Scheduler {
         Scheduler {
             extensions: Extensions::default(),
@@ -31,7 +23,8 @@ impl Scheduler {
         }
     }
 
-    pub fn with_tz<Tzz: chrono::TimeZone>(tz: Tzz) -> Scheduler<Tzz> {
+    /// if you want a specified timezone instead of the mathine timezone `chrono::Local`, please use this
+    pub fn with_tz<Tz: chrono::TimeZone>(tz: Tz) -> Scheduler<Tz> {
         Scheduler {
             extensions: Extensions::default(),
             jobs: vec![],
@@ -49,13 +42,15 @@ impl<Tz> Scheduler<Tz>
 where
     Tz: chrono::TimeZone + Send + 'static,
 {
+    /// add a shared type to the map, you can use it later in the task closer
     pub fn add_ext<T>(&self, ext: T)
     where
-        T: DebugAny + 'static + Send + Sync,
+        T: 'static + Send + Sync,
     {
         self.extensions.insert(ext);
     }
 
+    /// add a new task to the scheduler, you must
     pub fn add(&mut self, job: BoxedJob<Tz>) -> &mut Scheduler<Tz> {
         self.jobs.push(job);
         self

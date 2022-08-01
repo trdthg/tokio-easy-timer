@@ -3,9 +3,9 @@ mod async_job;
 mod jobschedule;
 mod sync_handler;
 mod sync_job;
-pub use self::async_handler::AsyncHandler;
+use self::async_handler::AsyncHandler;
 use self::jobschedule::JobScheduleBuilder;
-pub use self::sync_handler::SyncHandler;
+use self::sync_handler::SyncHandler;
 use crate::{extensions::Extensions, interval::Interval};
 pub use async_job::{AsyncJob, AsyncJobBuilder};
 use async_trait::async_trait;
@@ -21,31 +21,46 @@ where
 }
 
 pub trait JobBuilder<Args> {
+    /// Constructs a new job builder
     fn new() -> Self;
-    fn next(&mut self) -> &mut Self;
-    fn repeat(&mut self, n: u32, interval: Interval) -> &mut Self;
 
+    /// Specify another time the task will run
+    fn and(&mut self) -> &mut Self;
+
+    /// The task will run n times in sequence. You need to specify the number and the interval between tasks.
+    fn repeat_seq(&mut self, n: u32, interval: Interval) -> &mut Self;
+
+    /// Spawn n tasks at the same time. You need to specify the number and the interval between tasks.
+    fn repeat_async(&mut self, n: u32, interval: Interval) -> &mut Self;
+
+    /// Usually not use it directly, use `at_*` and `since_*` is better
     fn get_cron_builder(&mut self) -> &mut JobScheduleBuilder;
+
+    /// Specify a specific run time, equivalent to cron 'n'
     fn at(&mut self, interval: Interval) -> &mut Self {
         self.get_cron_builder().at(interval);
         self
     }
 
+    /// Specify a specific run time, equivalent to the corn expression 'm/n'
     fn since_every(&mut self, start: Interval, interval: Interval) -> &mut Self {
         self.get_cron_builder().since_every(start, interval);
         self
     }
 
+    /// Specify a specific run time, equivalent to the corn expression '0/n'
     fn every(&mut self, interval: Interval) -> &mut Self {
         self.get_cron_builder().every(interval);
         self
     }
 
+    /// Specify a specific run time, equivalent to the corn expression 'm-n'
     fn from_to(&mut self, start: Interval, end: Interval) -> &mut Self {
         self.get_cron_builder().from_to(start, end);
         self
     }
 
+    /// Specify a specific run time, the same as `at`
     fn at_datetime(
         &mut self,
         year: Option<i32>,
@@ -56,16 +71,19 @@ pub trait JobBuilder<Args> {
         sec: Option<u32>,
     ) -> &mut Self;
 
+    /// Specify a specific run time, the same as `at`
     fn at_time(&mut self, hour: u32, min: u32, sec: u32) -> &mut Self {
         self.at_datetime(None, None, None, Some(hour), Some(min), Some(sec));
         self
     }
 
+    /// Specify a specific run time, the same as `at`
     fn at_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
         self.at_datetime(Some(year), Some(month), Some(day), None, None, None);
         self
     }
 
+    /// Specify a specific run time, the same as `since`
     fn since_datetime(
         &mut self,
         year: i32,
@@ -76,11 +94,13 @@ pub trait JobBuilder<Args> {
         sec: u32,
     ) -> &mut Self;
 
+    /// Specify a specific run time, the same as `since`
     fn since_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
         self.since_datetime(year, month, day, 0, 0, 0);
         self
     }
 
+    /// Specify a specific run time, the same as `since`
     fn since_time(&mut self, hour: u32, min: u32, sec: u32) -> &mut Self {
         self.since_datetime(0, 1, 1, hour, min, sec);
         self

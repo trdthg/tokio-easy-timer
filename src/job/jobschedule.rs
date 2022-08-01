@@ -1,4 +1,4 @@
-use crate::Interval;
+use crate::interval::Interval;
 use cron::Schedule;
 use std::str::FromStr;
 
@@ -6,6 +6,7 @@ use std::str::FromStr;
 pub struct JobSchedule {
     pub since: (i32, u32, u32, u32, u32, u32),
     pub schedule: Schedule,
+    pub is_async: bool,
     pub repeat: u32,
     pub interval: u64,
 }
@@ -13,6 +14,7 @@ pub struct JobSchedule {
 pub struct JobScheduleBuilder {
     pub since: (i32, u32, u32, u32, u32, u32),
     pub cron: Vec<Option<String>>,
+    pub is_async: bool,
     pub repeat: u32,
     pub interval: u64,
 }
@@ -24,6 +26,7 @@ impl JobScheduleBuilder {
             cron: vec![None, None, None, None, None, None, None],
             repeat: 1,
             interval: 1,
+            is_async: false,
         }
     }
 
@@ -54,6 +57,7 @@ impl JobScheduleBuilder {
             repeat: self.repeat as u32,
             interval: self.interval,
             since: self.since,
+            is_async: false,
         }
     }
 }
