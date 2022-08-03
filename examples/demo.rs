@@ -85,6 +85,17 @@ async fn main() {
                     println!("{}", config.id);
                 }),
         );
-    cheduler.start().await;
+    cheduler.start().await.pending().await;
     println!("a");
+}
+
+mod test {
+    use std::str::FromStr;
+
+    #[test]
+    fn a() {
+        let s = "0 0 2 31 12 7 2100";
+        let s = cron::Schedule::from_str(s);
+        println!("{:?}", s.unwrap().upcoming(chrono::Local).next());
+    }
 }

@@ -16,10 +16,10 @@ async fn main() {
     cheduler.add_ext("a".to_string());
     cheduler.add_ext(1);
 
-    for _ in 0..1000000 {
+    for _ in 0..10000 {
         cheduler.add(
             SyncJob::new()
-                .every(1.minutes())
+                .every(20.seconds())
                 .run(|config: Data<Arc<Mutex<Config>>>| {
                     let mut config = config.lock();
                     config.id += 1;
@@ -27,15 +27,12 @@ async fn main() {
         );
     }
 
-    cheduler.add(
-        SyncJob::new()
-            .every(1.minutes())
-            .run(|config: Data<Arc<Mutex<Config>>>| {
-                let mut config = config.lock();
-                config.id += 1;
-                println!("{}", config.id);
-            }),
-    );
+    cheduler.add(SyncJob::new().every(20.seconds()).after(42).run(
+        |config: Data<Arc<Mutex<Config>>>| {
+            let config = config.lock();
+            println!("{}", config.id);
+        },
+    ));
 
     cheduler.start().await;
     std::future::pending::<()>().await;

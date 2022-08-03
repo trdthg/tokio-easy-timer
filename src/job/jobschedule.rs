@@ -6,6 +6,7 @@ use std::str::FromStr;
 #[derive(Clone)]
 pub struct JobSchedule {
     pub since: (i32, u32, u32, u32, u32, u32),
+    pub delay: u64,
     pub schedule: Schedule,
     pub is_async: bool,
     pub repeat: u32,
@@ -17,6 +18,7 @@ where
     Tz: TimeZone,
 {
     pub since: (i32, u32, u32, u32, u32, u32),
+    pub delay: u64,
     pub after: DateTime<Tz>,
     pub cron: Vec<Option<String>>,
     pub is_async: bool,
@@ -33,6 +35,7 @@ impl JobScheduleBuilder {
             repeat: 1,
             interval: 1,
             is_async: false,
+            delay: 0,
         }
     }
 }
@@ -49,7 +52,13 @@ where
             repeat: 1,
             interval: 1,
             is_async: false,
+            delay: 0,
         }
+    }
+
+    pub fn add_delay(&mut self, delay: u64) -> &mut Self {
+        self.delay += delay;
+        self
     }
 
     pub fn build(&mut self) -> JobSchedule {
@@ -79,6 +88,7 @@ where
             interval: self.interval,
             since: self.since,
             is_async: false,
+            delay: self.delay,
         }
     }
 }

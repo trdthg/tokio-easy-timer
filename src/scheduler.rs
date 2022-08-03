@@ -79,7 +79,7 @@ where
     // }
 
     /// Start the timer.
-    pub async fn start(&self) {
+    pub async fn start(&self) -> &Self {
         for job in self.jobs.iter() {
             let e = self.extensions.clone();
             let tz = self.tz.clone();
@@ -88,5 +88,10 @@ where
                 job.start_schedule(e, tz).await;
             });
         }
+        self
+    }
+
+    pub async fn pending(&self) {
+        std::future::pending::<()>().await;
     }
 }

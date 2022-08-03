@@ -6,7 +6,7 @@ mod sync_job;
 use self::async_handler::AsyncHandler;
 use self::jobschedule::JobScheduleBuilder;
 use self::sync_handler::SyncHandler;
-use crate::{extensions::Extensions, interval::Interval};
+use crate::{extensions::Extensions, interval::Interval, prelude::TimeUnits};
 pub use async_job::{AsyncJob, AsyncJobBuilder};
 use async_trait::async_trait;
 use chrono::TimeZone;
@@ -35,29 +35,29 @@ pub trait JobBuilder<Args> {
     fn repeat_async(&mut self, n: u32, interval: Interval) -> &mut Self;
 
     /// Usually not use it directly, use `at_*` and `since_*` is better
-    fn get_cron_builder(&mut self) -> &mut JobScheduleBuilder;
+    fn get_mut_cron_builder(&mut self) -> &mut JobScheduleBuilder;
 
     /// Specify a specific run time, equivalent to cron 'n'
     fn at(&mut self, interval: Interval) -> &mut Self {
-        self.get_cron_builder().at(interval);
+        self.get_mut_cron_builder().at(interval);
         self
     }
 
     /// Specify a specific run time, equivalent to the corn expression 'm/n'
     fn since_every(&mut self, start: Interval, interval: Interval) -> &mut Self {
-        self.get_cron_builder().since_every(start, interval);
+        self.get_mut_cron_builder().since_every(start, interval);
         self
     }
 
     /// Specify a specific run time, equivalent to the corn expression '0/n'
     fn every(&mut self, interval: Interval) -> &mut Self {
-        self.get_cron_builder().every(interval);
+        self.get_mut_cron_builder().every(interval);
         self
     }
 
     /// Specify a specific run time, equivalent to the corn expression 'm-n'
     fn from_to(&mut self, start: Interval, end: Interval) -> &mut Self {
-        self.get_cron_builder().from_to(start, end);
+        self.get_mut_cron_builder().from_to(start, end);
         self
     }
 
@@ -70,7 +70,15 @@ pub trait JobBuilder<Args> {
         hour: Option<u32>,
         min: Option<u32>,
         sec: Option<u32>,
-    ) -> &mut Self;
+    ) -> &mut Self {
+        year.map(|x| self.at((x as u32).year()));
+        month.map(|x| self.at((x as u32).month()));
+        day.map(|x| self.at((x as u32).day()));
+        hour.map(|x| self.at((x as u32).hour()));
+        min.map(|x| self.at((x as u32).minute()));
+        sec.map(|x| self.at((x as u32).second()));
+        self
+    }
 
     /// Specify a specific run time, the same as `at`
     fn at_time(&mut self, hour: u32, min: u32, sec: u32) -> &mut Self {
@@ -84,7 +92,9 @@ pub trait JobBuilder<Args> {
         self
     }
 
-    /// Specify a specific run time, the same as `since`
+    fn get_mut_since(&mut self) -> &mut (i32, u32, u32, u32, u32, u32);
+
+    /// Specify the datetime after which the task will start, the same as `since`
     fn since_datetime(
         &mut self,
         year: i32,
@@ -93,19 +103,30 @@ pub trait JobBuilder<Args> {
         hour: u32,
         min: u32,
         sec: u32,
-    ) -> &mut Self;
+    ) -> &mut Self {
+        *(self.get_mut_since()) = (year, month, day, hour, min, sec);
+        self
+    }
 
-    /// Specify a specific run time, the same as `since`
+    /// Specify the date after which the task will start, the same as `since`
     fn since_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
-        self.since_datetime(year, month, day, 0, 0, 0);
+        self.get_mut_since().0 = year;
+        self.get_mut_since().1 = month;
+        self.get_mut_since().2 = day;
         self
     }
 
-    /// Specify a specific run time, the same as `since`
+    /// Specify the time after which the task will start, the same as `since`
     fn since_time(&mut self, hour: u32, min: u32, sec: u32) -> &mut Self {
-        self.since_datetime(0, 1, 1, hour, min, sec);
+        self.get_mut_since().3 = hour;
+        self.get_mut_since().4 = min;
+        self.get_mut_since().5 = sec;
         self
     }
 
-    // fn after(&mut self, delay: Interval) -> &mut Self;
+    /// Specify when the task will start after, like `since`
+    fn after(&mut self, delay: u64) -> &mut Self {
+        self.get_mut_cron_builder().add_delay(delay);
+        self
+    }
 }

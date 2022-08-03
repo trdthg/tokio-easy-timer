@@ -86,6 +86,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Seconds(1));
     /// ```
     fn seconds(self) -> Interval {
+        assert!(self < 60);
         Interval::Seconds(self)
     }
 
@@ -97,6 +98,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Minutes(1));
     /// ```
     fn minutes(self) -> Interval {
+        assert!(self < 60);
         Interval::Minutes(self)
     }
 
@@ -108,6 +110,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Hours(1));
     /// ```
     fn hours(self) -> Interval {
+        assert!(self < 24);
         Interval::Hours(self)
     }
 
@@ -119,6 +122,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Days(1));
     /// ```
     fn days(self) -> Interval {
+        assert!(self <= 31);
         Interval::Days(self)
     }
 
@@ -130,6 +134,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Months(1));
     /// ```
     fn months(self) -> Interval {
+        assert!(self <= 12);
         Interval::Months(self)
     }
 
@@ -141,6 +146,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Weeks(1));
     /// ```
     fn weeks(self) -> Interval {
+        assert!(self <= 7);
         Interval::Weeks(self)
     }
 
@@ -152,6 +158,7 @@ impl TimeUnits for u32 {
     /// assert_eq!(a, Interval::Years(1));
     /// ```
     fn years(self) -> Interval {
+        assert!(self <= 2100);
         Interval::Years(self)
     }
 }

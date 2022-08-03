@@ -42,6 +42,9 @@ where
             let schedule = schedule.clone();
             tokio::spawn(async move {
                 // delay
+                if schedule.delay > 0 {
+                    tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
+                }
                 let now = chrono::Local::now().with_timezone(&tz);
                 let since = schedule.since;
                 let wait_to = tz
@@ -135,39 +138,12 @@ impl<Args> JobBuilder<Args> for SyncJobBuilder<Args> {
         self
     }
 
-    fn get_cron_builder(&mut self) -> &mut JobScheduleBuilder {
+    fn get_mut_cron_builder(&mut self) -> &mut JobScheduleBuilder {
         &mut self.builder
     }
 
-    fn at_datetime(
-        &mut self,
-        year: Option<i32>,
-        month: Option<u32>,
-        day: Option<u32>,
-        hour: Option<u32>,
-        min: Option<u32>,
-        sec: Option<u32>,
-    ) -> &mut Self {
-        self.builder.cron[0] = sec.and_then(|x| Some(x.to_string()));
-        self.builder.cron[1] = min.and_then(|x| Some(x.to_string()));
-        self.builder.cron[2] = hour.and_then(|x| Some(x.to_string()));
-        self.builder.cron[3] = day.and_then(|x| Some(x.to_string()));
-        self.builder.cron[4] = month.and_then(|x| Some(x.to_string()));
-        self.builder.cron[6] = year.and_then(|x| Some(x.to_string()));
-        self
-    }
-
-    fn since_datetime(
-        &mut self,
-        year: i32,
-        month: u32,
-        day: u32,
-        hour: u32,
-        min: u32,
-        sec: u32,
-    ) -> &mut Self {
-        self.builder.since = (year, month, day, hour, min, sec);
-        self
+    fn get_mut_since(&mut self) -> &mut (i32, u32, u32, u32, u32, u32) {
+        &mut self.builder.since
     }
 
     fn repeat_seq(&mut self, n: u32, interval: Interval) -> &mut Self {
