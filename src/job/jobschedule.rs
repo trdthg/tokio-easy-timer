@@ -1,4 +1,5 @@
 use crate::interval::Interval;
+use chrono::{DateTime, TimeZone};
 use cron::Schedule;
 use std::str::FromStr;
 
@@ -11,8 +12,12 @@ pub struct JobSchedule {
     pub interval: u64,
 }
 
-pub struct JobScheduleBuilder {
+pub struct JobScheduleBuilder<Tz = chrono::Local>
+where
+    Tz: TimeZone,
+{
     pub since: (i32, u32, u32, u32, u32, u32),
+    pub after: DateTime<Tz>,
     pub cron: Vec<Option<String>>,
     pub is_async: bool,
     pub repeat: u32,
@@ -24,20 +29,37 @@ impl JobScheduleBuilder {
         Self {
             since: (0, 1, 1, 0, 0, 0),
             cron: vec![None, None, None, None, None, None, None],
+            after: chrono::Local::now(),
+            repeat: 1,
+            interval: 1,
+            is_async: false,
+        }
+    }
+}
+
+impl<Tz> JobScheduleBuilder<Tz>
+where
+    Tz: TimeZone,
+{
+    pub fn with_tz(tz: DateTime<Tz>) -> Self {
+        Self {
+            since: (0, 1, 1, 0, 0, 0),
+            cron: vec![None, None, None, None, None, None, None],
+            after: tz,
             repeat: 1,
             interval: 1,
             is_async: false,
         }
     }
 
-    pub fn build(&self) -> JobSchedule {
-        let mut cron = self.cron.clone();
+    pub fn build(&mut self) -> JobSchedule {
         for i in 0..6 {
-            if cron[i].is_some() && cron[i + 1].is_none() {
-                cron[i + 1] = Some("*".to_string())
+            if self.cron[i].is_some() && self.cron[i + 1].is_none() {
+                self.cron[i + 1] = Some("*".to_string())
             }
         }
-        let s = cron
+        let s = self
+            .cron
             .iter()
             .enumerate()
             .map(|(i, x)| {
@@ -50,8 +72,7 @@ impl JobScheduleBuilder {
             .collect::<Vec<&str>>()
             .join(" ");
 
-        // println!("Cron: {}", s);
-        let s = Schedule::from_str(s.as_str()).expect("cron 表达式不合法");
+        let s = Schedule::from_str(s.as_str()).expect("cron expression is not valid");
         JobSchedule {
             schedule: s,
             repeat: self.repeat as u32,
@@ -64,9 +85,11 @@ impl JobScheduleBuilder {
 
 macro_rules! every_start {
     ($( {$Varient: ident, $Index: expr} ),* | ($WeekIndex:expr) | $({$WeekVarient: ident, $I: expr} ),* ) => {
-        impl JobScheduleBuilder
+        impl<Tz> JobScheduleBuilder<Tz>
+
+where
+Tz: TimeZone,
         {
-            /// at 只重复一次
             pub fn at(&mut self, interval: Interval) -> &mut Self {
                 match interval {
                     $(
@@ -94,7 +117,6 @@ macro_rules! every_start {
                 self
             }
 
-            /// 重复，带有起始时间
             pub fn since_every(&mut self, start: Interval, interval: Interval) -> &mut Self {
                 match (start, interval) {
                     $(
@@ -111,23 +133,19 @@ macro_rules! every_start {
                 self
             }
 
-            /// every 不带起始时间
             pub fn every(&mut self, interval: Interval) -> &mut Self {
                 match interval {
                     $(
                         Interval::$Varient(x) => {
                             if let Some(s) = &mut self.cron[$Index] {
-                                // self.cron[$Index] = Some(format!("{},{}", s, format!("0/{}", x)))
                                 s.push_str(format!(",0/{}", x).as_str());
                             } else {
-                                // 新增的，since 默认为 0
                                 self.cron[$Index] = Some(format!("0/{}", x));
                             }
                         }
                     )*
                     $(
                         Interval::$WeekVarient => {
-                            // Sun
                             let week = format!("{}", $I);
                             if let Some(s) = &mut self.cron[$WeekIndex] {
                                 s.push_str(format!(",{}", week).as_str());
@@ -143,7 +161,6 @@ macro_rules! every_start {
                 self
             }
 
-            /// 时间范围
             pub fn from_to(&mut self, start: Interval, end: Interval) -> &mut Self {
                 match (start, end) {
                     $(
@@ -159,7 +176,6 @@ macro_rules! every_start {
                 }
                 self
             }
-
         }
     };
 }

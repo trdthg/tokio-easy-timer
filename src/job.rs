@@ -17,6 +17,7 @@ pub trait Job<Tz>
 where
     Tz: TimeZone,
 {
+    /// Start spawn jobs
     async fn start_schedule(&self, e: Extensions, tz: Tz);
 }
 
@@ -105,4 +106,6 @@ pub trait JobBuilder<Args> {
         self.since_datetime(0, 1, 1, hour, min, sec);
         self
     }
+
+    // fn after(&mut self, delay: Interval) -> &mut Self;
 }

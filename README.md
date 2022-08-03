@@ -4,7 +4,14 @@ tokio-easy-timer is a tokio-based task scheduler, with a user-friendly API.
 
 Inspired by [clokwerk](https://github.com/mdsherry/clokwerk)
 
-# Usage
+## Features
+
+- Easy: use job builder to build corn expression and task func
+- Clean: use extension map to manage data
+- Async: support both async and sync job
+- Cron Expressions: support for using standard corn expressions
+
+## Examples
 
 ```rs
 use std::sync::Arc;
@@ -48,3 +55,9 @@ async fn main() {
     cheduler.start().await;
 }
 ```
+
+## Tips
+
+Sync job will be spawn by `tokio::task::spawn_blocking`
+
+## Contributing

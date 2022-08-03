@@ -50,7 +50,10 @@ pub trait TimeUnits: Sized {
     fn minutes(self) -> Interval;
     fn hours(self) -> Interval;
     fn days(self) -> Interval;
+    fn months(self) -> Interval;
     fn weeks(self) -> Interval;
+    fn years(self) -> Interval;
+
     fn second(self) -> Interval {
         self.seconds()
     }
@@ -63,235 +66,92 @@ pub trait TimeUnits: Sized {
     fn day(self) -> Interval {
         self.days()
     }
+    fn month(self) -> Interval {
+        self.months()
+    }
+    fn year(self) -> Interval {
+        self.years()
+    }
     fn week(self) -> Interval {
         self.weeks()
     }
 }
 
 impl TimeUnits for u32 {
+    /// Turn u32 to Interval::Seconds(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.seconds();
+    /// assert_eq!(a, Interval::Seconds(1));
+    /// ```
     fn seconds(self) -> Interval {
         Interval::Seconds(self)
     }
+
+    /// Turn u32 to Interval::Minutes(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.minutes();
+    /// assert_eq!(a, Interval::Minutes(1));
+    /// ```
     fn minutes(self) -> Interval {
         Interval::Minutes(self)
     }
+
+    /// Turn u32 to Interval::Hours(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.hours();
+    /// assert_eq!(a, Interval::Hours(1));
+    /// ```
     fn hours(self) -> Interval {
         Interval::Hours(self)
     }
+
+    /// Turn u32 to Interval::Days(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.days();
+    /// assert_eq!(a, Interval::Days(1));
+    /// ```
     fn days(self) -> Interval {
         Interval::Days(self)
     }
+
+    /// Turn u32 to Interval::Months(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.months();
+    /// assert_eq!(a, Interval::Months(1));
+    /// ```
+    fn months(self) -> Interval {
+        Interval::Months(self)
+    }
+
+    /// Turn u32 to Interval::Weeks(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.weeks();
+    /// assert_eq!(a, Interval::Weeks(1));
+    /// ```
     fn weeks(self) -> Interval {
         Interval::Weeks(self)
     }
+
+    /// Turn u32 to Interval::Years(u32)
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = 1.years();
+    /// assert_eq!(a, Interval::Years(1));
+    /// ```
+    fn years(self) -> Interval {
+        Interval::Years(self)
+    }
 }
-
-// pub struct YearCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct WeekCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct MonthCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct DayCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct HourCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct MinCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// pub struct SecCron {
-//     sec: Vec<u32>,
-//     min: Vec<u32>,
-//     hour: Vec<u32>,
-//     day: Vec<u32>,
-//     month: Vec<u32>,
-//     week: Vec<u32>,
-//     year: Vec<Option<u32>>,
-// }
-// impl YearCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn year(mut self, year: u32) -> WeekCron {
-//         self.year.push(Some(year));
-//         WeekCron {
-//             sec: self.sec,
-//             min: self.min,
-//             hour: self.hour,
-//             day: self.day,
-//             month: self.month,
-//             week: self.week,
-//             year: self.year,
-//         }
-//     }
-// }
-
-// impl WeekCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn week(mut self, week: u32) -> MonthCron {
-//         self.week.push(week);
-//         MonthCron {
-//             sec: self.sec,
-//             min: self.min,
-//             hour: self.hour,
-//             day: self.day,
-//             month: self.month,
-//             week: self.week,
-//             year: self.year,
-//         }
-//     }
-// }
-
-// impl MonthCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn day(mut self, day: u32) -> DayCron {
-//         self.day.push(day);
-//         DayCron {
-//             sec: self.sec,
-//             min: self.min,
-//             hour: self.hour,
-//             day: self.day,
-//             month: self.month,
-//             week: self.week,
-//             year: self.year,
-//         }
-//     }
-// }
-
-// impl HourCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn week(mut self, hour: u32) -> HourCron {
-//         self.hour.push(hour);
-//         HourCron {
-//             sec: self.sec,
-//             min: self.min,
-//             hour: self.hour,
-//             day: self.day,
-//             month: self.month,
-//             week: self.week,
-//             year: self.year,
-//         }
-//     }
-// }
-
-// impl MinCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn min(mut self, min: u32) -> SecCron {
-//         self.min.push(min);
-//         SecCron {
-//             sec: self.sec,
-//             min: self.min,
-//             hour: self.hour,
-//             day: self.day,
-//             month: self.month,
-//             week: self.week,
-//             year: self.year,
-//         }
-//     }
-// }
-
-// impl SecCron {
-//     pub fn new() -> Self {
-//         Self {
-//             sec: vec![],
-//             min: vec![],
-//             hour: vec![],
-//             day: vec![],
-//             month: vec![],
-//             week: vec![],
-//             year: vec![],
-//         }
-//     }
-//     pub fn sec(mut self, sec: u32) {
-//         self.sec.push(sec);
-//     }
-// }

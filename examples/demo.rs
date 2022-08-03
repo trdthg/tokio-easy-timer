@@ -85,21 +85,6 @@ async fn main() {
                     println!("{}", config.id);
                 }),
         );
-    // for _ in 0..100000 {
-    //     cheduler.add(
-    //         AsyncJob::new()
-    //             .every(1.minutes())
-    //             .repeat_unblocking(3, 1.seconds())
-    //             .run(|config: Data<Arc<Mutex<Config>>>| async move {
-    //                 let mut config = config.lock();
-    //                 config.id += 1;
-    //             }),
-    //     );
-    // }
     cheduler.start().await;
-
-    // .every(Interval::Saturday) // 每周六，每隔 2 小时，下一个小时内 每 10 分钟运行一轮，每轮每 10 秒运行一次，持续 1 分钟 0:0:0 0:0:1 0:1:0 0:2:0 2:0:0 2:1:0 2:2:0
-    // .every(2.hour())
-    // .every(10.minutes())
-    // .every(10.seconds())
+    println!("a");
 }

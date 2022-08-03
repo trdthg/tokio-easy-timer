@@ -28,46 +28,46 @@ impl<Args, F, Tz> Job<Tz> for AsyncJob<Args, F>
 where
     Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
     <Tz as TimeZone>::Offset: Send + Sync,
-    F: AsyncHandler<Args> + Send + Sync + 'static + Clone + Copy,
+    F: AsyncHandler<Args> + Send + Sync + 'static + Copy,
     Args: Clone + 'static + Send + Sync,
 {
     async fn start_schedule(&self, e: Extensions, tz: Tz) {
-        let mut han = vec![];
         for schedule in self.jobschedules.iter() {
-            // 为每一个任务运行的时间点单独 spawn 一个任务
+            // spawn a task for every corn schedule
             let f = self.f.clone();
             let e = e.clone();
             let schedule = schedule.clone();
-            let t = tokio::spawn(async move {
-                // 延时
+            tokio::spawn(async move {
+                // delay
                 let now = chrono::Local::now().with_timezone(&tz);
                 let since = schedule.since;
                 let wait_to = tz
                     .ymd(since.0, since.1, since.2)
                     .and_hms(since.3, since.4, since.5);
-                if wait_to > now {
-                    let d = wait_to - now;
-                    tokio::time::sleep(Duration::from_secs(d.num_seconds() as u64)).await;
+                let d = wait_to.timestamp() - now.timestamp();
+                if d > 0 {
+                    tokio::time::sleep(Duration::from_secs(d as u64)).await;
                 }
 
-                // 开始执行任务
+                // run jobs
                 for next in schedule.schedule.upcoming(tz) {
-                    // 计算距离下次任务运行剩余的时间
+                    // Calculates the time left until the next task run
                     let now = chrono::Local::now().with_timezone(&tz);
-                    if next < now {
+                    let d = next.timestamp() - now.timestamp();
+                    if d < 0 {
                         continue;
                     }
-                    let d = next.timestamp() - now.timestamp();
-                    // println!("距离：{:?} 还差 {} 秒", next, d);
 
-                    // spawn 一个任务
                     let f = f.clone();
                     let e = e.clone();
+
+                    // prepare a task for the next job
                     tokio::spawn(async move {
-                        // 一直等待到下次任务运行
+                        // Wait until the next job runs
                         tokio::time::sleep(Duration::from_secs(d as u64)).await;
+
+                        // Handle repeat
                         for i in 0..schedule.repeat {
-                            // 执行用户任务
                             if schedule.is_async {
                                 let e = e.clone();
                                 tokio::spawn(async move {
@@ -76,22 +76,16 @@ where
                             } else {
                                 f.call(&e).await;
                             }
-                            // 最后一次就不 sleep 了
                             if schedule.interval > 0 && i < schedule.repeat - 1 {
                                 tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
                             }
                         }
-                        // 根据重复次数和间隔时间依次运行
                     });
 
-                    // 等到下次任务运行后继续
+                    // wait until this task run
                     tokio::time::sleep(Duration::from_secs(d as u64)).await;
                 }
             });
-            han.push(t);
-        }
-        for t in han {
-            t.await.expect("msg");
         }
     }
 }
@@ -100,6 +94,7 @@ impl<Args> AsyncJobBuilder<Args>
 where
     Args: Clone + 'static + Send + Sync,
 {
+    /// Constructs a new async job
     pub fn run<Tz, F>(&mut self, f: F) -> BoxedJob<Tz>
     where
         F: AsyncHandler<Args> + Copy + Send + Sync + 'static,

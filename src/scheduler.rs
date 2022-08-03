@@ -14,7 +14,15 @@ where
 }
 
 impl Scheduler {
+    /// ## Constructs a new scheduler
+    ///
     /// the default timezone is chrono::Local, if you want a specified timezone, use `Scheduler::with_tz()` instead.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let s = Scheduler::new();
+    /// ```
     pub fn new() -> Scheduler {
         Scheduler {
             extensions: Extensions::default(),
@@ -72,21 +80,13 @@ where
 
     /// Start the timer.
     pub async fn start(&self) {
-        let mut hans = vec![];
         for job in self.jobs.iter() {
             let e = self.extensions.clone();
             let tz = self.tz.clone();
             let job = job.to_owned();
-            let t = tokio::spawn(async move {
+            tokio::spawn(async move {
                 job.start_schedule(e, tz).await;
             });
-            hans.push(t);
-        }
-        println!("任务启动完成");
-        for t in hans {
-            if let Err(e) = t.await {
-                //
-            }
         }
     }
 }
