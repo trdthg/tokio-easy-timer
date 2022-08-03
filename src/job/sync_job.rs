@@ -34,7 +34,6 @@ where
     Args: Clone + 'static + Send + Sync,
 {
     async fn start_schedule(&self, e: Extensions, tz: Tz) {
-        // let mut han = vec![];
         for schedule in self.jobschedules.iter() {
             // spawn a task for every corn schedule
             let f = self.f.clone();

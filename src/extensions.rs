@@ -1,9 +1,7 @@
 mod data;
 mod type_key;
 pub use data::Data;
-use parking_lot::{
-    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
-};
+use parking_lot::RwLock;
 use std::{any::Any, collections::HashMap, sync::Arc};
 use type_key::TypeKey;
 
@@ -34,33 +32,6 @@ impl Extensions {
     {
         let key = TypeKey::of::<T>();
         self.map.write().insert(key, Box::new(Data::new(data)));
-    }
-
-    pub(crate) fn get<T: Send + Sync + AsAny + 'static>(&self) -> MappedRwLockReadGuard<'_, T> {
-        RwLockReadGuard::map(self.map.read(), |m| {
-            m.get(&TypeKey::of::<T>())
-                .and_then(|x| (*x).as_any().downcast_ref())
-                .unwrap()
-        })
-    }
-
-    pub(crate) fn get_mut<T>(&self) -> MappedRwLockWriteGuard<'_, T>
-    where
-        T: Send + Sync + AsAny + 'static,
-    {
-        RwLockWriteGuard::map(self.map.write(), |m| {
-            m.get_mut(&TypeKey::of::<T>())
-                .and_then(|x| (**x).as_any_mut().downcast_mut())
-                .unwrap()
-        })
-    }
-
-    /// check whether a type exists
-    pub(crate) fn has_type<T: AsAny + 'static + Send + Sync>(&self) -> bool {
-        match self.map.read().get(&TypeKey::of::<T>()) {
-            Some(_) => true,
-            None => false,
-        }
     }
 
     /// this will panic if the required type doesn't exist

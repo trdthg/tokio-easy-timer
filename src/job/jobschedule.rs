@@ -1,5 +1,4 @@
 use crate::interval::Interval;
-use chrono::{DateTime, TimeZone};
 use cron::Schedule;
 use std::str::FromStr;
 
@@ -13,13 +12,9 @@ pub struct JobSchedule {
     pub interval: u64,
 }
 
-pub struct JobScheduleBuilder<Tz = chrono::Local>
-where
-    Tz: TimeZone,
-{
+pub struct JobScheduleBuilder {
     pub since: (i32, u32, u32, u32, u32, u32),
     pub delay: u64,
-    pub after: DateTime<Tz>,
     pub cron: Vec<Option<String>>,
     pub is_async: bool,
     pub repeat: u32,
@@ -31,24 +26,6 @@ impl JobScheduleBuilder {
         Self {
             since: (0, 1, 1, 0, 0, 0),
             cron: vec![None, None, None, None, None, None, None],
-            after: chrono::Local::now(),
-            repeat: 1,
-            interval: 1,
-            is_async: false,
-            delay: 0,
-        }
-    }
-}
-
-impl<Tz> JobScheduleBuilder<Tz>
-where
-    Tz: TimeZone,
-{
-    pub fn with_tz(tz: DateTime<Tz>) -> Self {
-        Self {
-            since: (0, 1, 1, 0, 0, 0),
-            cron: vec![None, None, None, None, None, None, None],
-            after: tz,
             repeat: 1,
             interval: 1,
             is_async: false,
@@ -87,7 +64,7 @@ where
             repeat: self.repeat as u32,
             interval: self.interval,
             since: self.since,
-            is_async: false,
+            is_async: self.is_async,
             delay: self.delay,
         }
     }
@@ -95,11 +72,8 @@ where
 
 macro_rules! every_start {
     ($( {$Varient: ident, $Index: expr} ),* | ($WeekIndex:expr) | $({$WeekVarient: ident, $I: expr} ),* ) => {
-        impl<Tz> JobScheduleBuilder<Tz>
 
-where
-Tz: TimeZone,
-        {
+        impl JobScheduleBuilder {
             pub fn at(&mut self, interval: Interval) -> &mut Self {
                 match interval {
                     $(

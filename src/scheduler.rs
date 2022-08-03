@@ -50,7 +50,7 @@ impl<Tz> Scheduler<Tz>
 where
     Tz: chrono::TimeZone + Send + 'static,
 {
-    /// add a shared type to the map, you can use it later in the task closer
+    /// add a type to the map, you can use it later in the task closer
     pub fn add_ext<T>(&self, ext: T)
     where
         T: 'static + Send + Sync,
@@ -78,8 +78,7 @@ where
     //     self
     // }
 
-    /// Start the timer.
-    pub async fn start(&self) -> &Self {
+    async fn start_spawn(&self) -> &Self {
         for job in self.jobs.iter() {
             let e = self.extensions.clone();
             let tz = self.tz.clone();
@@ -91,7 +90,13 @@ where
         self
     }
 
-    pub async fn pending(&self) {
+    /// Start the timer.
+    pub async fn run(&self) -> &Self {
+        self.start_spawn().await
+    }
+
+    pub async fn run_pending(&self) {
+        self.start_spawn().await;
         std::future::pending::<()>().await;
     }
 }

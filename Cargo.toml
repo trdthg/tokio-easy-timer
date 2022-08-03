@@ -1,8 +1,15 @@
 [package]
 name = "tokio-easy-timer"
 version = "0.1.0"
+authors = ["trdthg <trdthg@outlook.com>"]
 edition = "2021"
-
+description = "A tokio-based task scheduler, with a user-friendly API"
+readme = "README.md"
+homepage = "https://github.com/trdthg/tokio-easy-timer"
+repository = "https://github.com/trdthg/tokio-easy-timer"
+license = "MIT OR Apache-2.0"
+keywords = ["timer", "tokio", "async", "scheduler", "corn"]
+categories = ["asynchronous"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
