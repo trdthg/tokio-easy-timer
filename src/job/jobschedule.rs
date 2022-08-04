@@ -58,7 +58,8 @@ impl JobScheduleBuilder {
             .collect::<Vec<&str>>()
             .join(" ");
 
-        let s = Schedule::from_str(s.as_str()).expect("cron expression is not valid");
+        let s = Schedule::from_str(s.as_str())
+            .expect(&format!("cron expression is not valid: {}", s.as_str()));
         JobSchedule {
             schedule: s,
             repeat: self.repeat as u32,
@@ -122,9 +123,9 @@ macro_rules! every_start {
                     $(
                         Interval::$Varient(x) => {
                             if let Some(s) = &mut self.cron[$Index] {
-                                s.push_str(format!(",0/{}", x).as_str());
+                                s.push_str(format!(",*/{}", x).as_str());
                             } else {
-                                self.cron[$Index] = Some(format!("0/{}", x));
+                                self.cron[$Index] = Some(format!("*/{}", x));
                             }
                         }
                     )*
