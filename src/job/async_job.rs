@@ -1,6 +1,5 @@
-use std::{marker::PhantomData, sync::Arc, time::Duration};
+use std::{marker::PhantomData, time::Duration};
 
-use async_trait::async_trait;
 use chrono::TimeZone;
 
 use crate::{extensions::Extensions, interval::Interval, scheduler::BoxedJob};
@@ -23,15 +22,18 @@ pub struct AsyncJobBuilder<Args> {
     _phantom: PhantomData<Args>,
 }
 
-#[async_trait]
 impl<Args, F, Tz> Job<Tz> for AsyncJob<Args, F>
 where
-    Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
-    <Tz as TimeZone>::Offset: Send + Sync,
-    F: AsyncHandler<Args> + Send + Sync + 'static + Copy,
-    Args: Clone + 'static + Send + Sync,
+    F: AsyncHandler<Args> + Send + 'static + Copy,
+    Args: Send + 'static + Clone,
+    Tz: TimeZone + Send + Copy + 'static,
+    <Tz as TimeZone>::Offset: Send,
 {
-    async fn start_schedule(&self, e: Extensions, tz: Tz) {
+    fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
+        Box::new((*self).clone())
+    }
+
+    fn start_schedule(&self, e: Extensions, tz: Tz) {
         for schedule in self.jobschedules.iter() {
             // spawn a task for every corn schedule
             let f = self.f.clone();
@@ -57,10 +59,7 @@ where
                     if d < 0 {
                         continue;
                     }
-
-                    let f = f.clone();
                     let e = e.clone();
-
                     // prepare a task for the next job
                     tokio::spawn(async move {
                         // Wait until the next job runs
@@ -97,17 +96,35 @@ where
     /// Constructs a new async job
     pub fn run<Tz, F>(&mut self, f: F) -> BoxedJob<Tz>
     where
-        F: AsyncHandler<Args> + Copy + Send + Sync + 'static,
-        Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
+        F: AsyncHandler<Args> + Send + 'static + Clone + Copy,
+        Tz: TimeZone + Send + Sync + 'static + Clone + Copy,
         <Tz as TimeZone>::Offset: Send + Sync,
     {
         self.and();
-        Arc::new(AsyncJob {
-            f,
+        let job: AsyncJob<Args, F> = AsyncJob {
+            f: f.to_owned(),
             jobschedules: self.jobschedules.clone(),
             _phantom: PhantomData,
-        })
+        };
+        let res = Box::new(job);
+        res
     }
+
+    // / Constructs a new async job
+    // pub fn build<Tz, F>(&mut self, f: F) -> AsyncJob<Args, F>
+    // where
+    //     F: AsyncHandler<Args> + Send + 'static + Clone + Copy,
+    //     Tz: TimeZone + Send + Sync + 'static + Clone + Copy,
+    //     <Tz as TimeZone>::Offset: Send + Sync,
+    // {
+    //     self.and();
+    //     let job: AsyncJob<Args, F> = AsyncJob {
+    //         f: f.to_owned(),
+    //         jobschedules: self.jobschedules.clone(),
+    //         _phantom: PhantomData,
+    //     };
+    //     job
+    // }
 }
 
 impl<Args> JobBuilder<Args> for AsyncJobBuilder<Args> {

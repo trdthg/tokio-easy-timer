@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use async_trait::async_trait;
 use chrono::TimeZone;
 
 use crate::{extensions::Extensions, interval::Interval, scheduler::BoxedJob};
@@ -25,15 +24,18 @@ pub struct SyncJobBuilder<Args> {
     _phantom: PhantomData<Args>,
 }
 
-#[async_trait]
 impl<Args, F, Tz> Job<Tz> for SyncJob<Args, F>
 where
-    Tz: TimeZone + Send + Sync + Clone + Copy + 'static,
-    <Tz as TimeZone>::Offset: Send + Sync,
-    F: SyncHandler<Args> + Send + Sync + 'static + Copy,
-    Args: Clone + 'static + Send + Sync,
+    F: SyncHandler<Args> + Send + 'static + Copy,
+    Args: Send + 'static + Clone,
+    Tz: TimeZone + Send + Copy + 'static,
+    <Tz as TimeZone>::Offset: Send,
 {
-    async fn start_schedule(&self, e: Extensions, tz: Tz) {
+    fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
+        Box::new((*self).clone())
+    }
+
+    fn start_schedule(&self, e: Extensions, tz: Tz) {
         for schedule in self.jobschedules.iter() {
             // spawn a task for every corn schedule
             let f = self.f.clone();
@@ -104,17 +106,17 @@ where
 
 impl<Args> SyncJobBuilder<Args>
 where
-    Args: Clone + 'static + Send + Sync,
+    Args: Clone + 'static + Send,
 {
     /// Constructs a new sync job
     pub fn run<Tz, F>(&mut self, f: F) -> BoxedJob<Tz>
     where
-        F: SyncHandler<Args> + Copy + Send + Sync + 'static,
+        F: SyncHandler<Args> + Send + 'static + Copy,
         Tz: TimeZone + Clone + Send + Sync + Copy + 'static,
         <Tz as TimeZone>::Offset: Send + Sync,
     {
         self.and();
-        Arc::new(SyncJob {
+        Box::new(SyncJob {
             f,
             jobschedules: self.jobschedules.clone(),
             _phantom: PhantomData,

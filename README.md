@@ -13,7 +13,7 @@ Inspired by [clokwerk](https://github.com/mdsherry/clokwerk)
 
 ## Examples
 
-### Basic Usage
+### Basic Usage (sync, mutex)
 
 ```rs
 use std::sync::{Arc, Mutex};
@@ -54,7 +54,7 @@ async fn main() {
 }
 ```
 
-### More Example
+### More Timer Example
 
 ```rs
 use std::sync::Arc;
@@ -110,6 +110,47 @@ async fn main() {
                     let mut config = config.lock();
                     config.id += 1;
                     println!("{}", config.id);
+                }),
+        )
+        .run_pending()
+        .await;
+}
+```
+
+### Work with teloxide (async telegram bot library)
+
+```rs
+use dotenv::dotenv;
+use std::sync::Arc;
+
+use teloxide::{
+    prelude::AutoSend,
+    requests::{Request, Requester, RequesterExt},
+    types::ChatId,
+    Bot,
+};
+use tokio_easy_timer::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    dotenv().ok();
+    let bot = Arc::new(Bot::from_env().auto_send());
+    let mut scheduler = Scheduler::new();
+    scheduler.add_ext(bot);
+
+    scheduler
+        .add(
+            AsyncJob::new()
+                .every(10.seconds())
+                .run(|bot: Data<Arc<AutoSend<Bot>>>| async move {
+                    bot.send_message(
+                        // set your own char id here !
+                        ChatId(std::env::var("CHAT_ID").unwrap().parse().unwrap()),
+                        format!("Hi!"),
+                    )
+                    .send()
+                    .await
+                    .unwrap();
                 }),
         )
         .run_pending()

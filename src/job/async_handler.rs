@@ -1,22 +1,27 @@
 use crate::extensions::{Data, Extensions};
-use async_trait::async_trait;
-use std::future::Future;
-#[async_trait]
+use std::{future::Future, pin::Pin};
+
 pub trait AsyncHandler<Args> {
-    async fn call(&self, e: &Extensions);
+    fn call(self, e: &Extensions) -> Pin<Box<dyn Future<Output = ()> + Send>>;
 }
+
 macro_rules! impl_handler {
     ($( $P:ident ),*) => {
-        #[async_trait]
         impl<F, Fut, $($P,)*> AsyncHandler<($(Data<$P>,)*)> for F
         where
             $( $P: Clone + 'static + Send + Sync, )*
-            Fut: Future<Output = ()> + Send + Sync,
-            F: Fn($(Data<$P>,)*) -> Fut + Send + Sync,
+            Fut: Future<Output = ()> + Send + 'static,
+            F: Fn($(Data<$P>,)*) -> Fut + Send + Copy,
         {
-            async fn call(&self, _e: &Extensions) {
-                self($(_e.get_data::<$P>(),)*).await
-            }
+            fn call(self, _e: &Extensions) -> Pin<Box<dyn Future<Output = ()> + Send>> {
+                let f = self.to_owned();
+                let f = f($(_e.get_data::<$P>(),)*);
+                Box::pin(
+                    async {
+                        f.await;
+                    }
+                )
+        }
         }
     };
 }

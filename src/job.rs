@@ -3,22 +3,22 @@ mod async_job;
 mod jobschedule;
 mod sync_handler;
 mod sync_job;
-use self::async_handler::AsyncHandler;
-use self::jobschedule::JobScheduleBuilder;
-use self::sync_handler::SyncHandler;
+pub use self::async_handler::AsyncHandler;
+pub use self::async_job::{AsyncJob, AsyncJobBuilder};
+pub use self::jobschedule::JobScheduleBuilder;
+pub use self::sync_handler::SyncHandler;
+pub use self::sync_job::{SyncJob, SyncJobBuilder};
 use crate::{extensions::Extensions, interval::Interval, prelude::TimeUnits};
-pub use async_job::{AsyncJob, AsyncJobBuilder};
-use async_trait::async_trait;
 use chrono::TimeZone;
-pub use sync_job::{SyncJob, SyncJobBuilder};
 
-#[async_trait]
 pub trait Job<Tz>
 where
     Tz: TimeZone,
 {
+    fn box_clone(&self) -> Box<dyn Job<Tz> + Send>;
+
     /// Start spawn jobs
-    async fn start_schedule(&self, e: Extensions, tz: Tz);
+    fn start_schedule(&self, e: Extensions, tz: Tz);
 }
 
 pub trait JobBuilder<Args> {

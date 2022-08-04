@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use chrono::TimeZone;
 
 use crate::extensions::Extensions;
 use crate::job::Job;
 
-pub type BoxedJob<Tz> = Arc<dyn Job<Tz> + Send + Sync + 'static>;
+pub type BoxedJob<Tz> = Box<dyn Job<Tz> + Send + 'static>;
 pub struct Scheduler<Tz = chrono::Local>
 where
     Tz: chrono::TimeZone,
@@ -48,7 +48,8 @@ impl Scheduler {
 
 impl<Tz> Scheduler<Tz>
 where
-    Tz: chrono::TimeZone + Send + 'static,
+    Tz: TimeZone + Clone + Sync + Send + Copy + 'static,
+    <Tz as TimeZone>::Offset: Send + Sync,
 {
     /// add a type to the map, you can use it later in the task closer
     pub fn add_ext<T>(&self, ext: T)
@@ -64,16 +65,12 @@ where
         self
     }
 
-    // pub fn add<Args, F>(&mut self, job: SyncJob<Args, F>) -> &mut Scheduler<Tz>
+    // pub fn add<Args, F>(&mut self, job: AsyncJob<Args, F>) -> &mut Scheduler<Tz>
     // where
-    //     Args: Clone + 'static + Debug + Send + Sync,
+    //     Args: Clone + 'static + Send + Sync,
     //     F: AsyncHandler<Args> + Copy + Send + Sync + 'static,
     // {
-    //     let job = Arc::new(SyncJob {
-    //         f: job.f,
-    //         _phantom: PhantomData,
-    //         jobschedules: job.jobschedules,
-    //     });
+    //     let job = Box::new(job);
     //     self.jobs.push(job);
     //     self
     // }
@@ -82,10 +79,13 @@ where
         for job in self.jobs.iter() {
             let e = self.extensions.clone();
             let tz = self.tz.clone();
-            let job = job.to_owned();
-            tokio::spawn(async move {
-                job.start_schedule(e, tz).await;
-            });
+            {
+                let job = job.box_clone();
+                tokio::spawn(async move {
+                    let job = job;
+                    job.start_schedule(e, tz);
+                });
+            }
         }
         self
     }
@@ -95,6 +95,7 @@ where
         self.start_spawn().await
     }
 
+    /// Start the timer, block the current thread.
     pub async fn run_pending(&self) {
         self.start_spawn().await;
         std::future::pending::<()>().await;

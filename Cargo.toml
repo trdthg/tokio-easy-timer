@@ -15,6 +15,9 @@ categories = ["asynchronous"]
 [dependencies]
 parking_lot = "0.12"
 tokio = { version="1.5", features=["rt", "rt-multi-thread", "time", "macros"]}
-async-trait = "0.1"
 cron = "0.11"
 chrono = "0.4"
+
+[dev-dependencies]
+teloxide = { version = "0.10", features = ["macros", "auto-send"] }
+dotenv = "0.15"
