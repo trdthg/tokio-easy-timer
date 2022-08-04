@@ -1,6 +1,6 @@
 [package]
 name = "tokio-easy-timer"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["trdthg <trdthg@outlook.com>"]
 edition = "2021"
 description = "A tokio-based task scheduler, with a user-friendly API"
