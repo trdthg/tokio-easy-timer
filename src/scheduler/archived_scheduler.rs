@@ -3,8 +3,15 @@ use chrono::TimeZone;
 use crate::extensions::Extensions;
 use crate::job::Job;
 
-pub type BoxedJob<Tz> = Box<dyn Job<Tz> + Send + 'static>;
-pub struct Scheduler<Tz = chrono::Local>
+use super::{BoxedJob, Scheduler};
+
+// impl<Tz> Scheduler<Tz> for NormalScheduler<Tz>
+// where
+//     Tz: TimeZone,
+// {
+// }
+
+pub struct NormalScheduler<Tz = chrono::Local>
 where
     Tz: chrono::TimeZone,
 {
@@ -13,7 +20,7 @@ where
     extensions: Extensions,
 }
 
-impl Scheduler {
+impl NormalScheduler {
     /// ## Constructs a new scheduler
     ///
     /// the default timezone is chrono::Local, if you want a specified timezone, use `Scheduler::with_tz()` instead.
@@ -23,8 +30,8 @@ impl Scheduler {
     /// ```rust
     /// let s = Scheduler::new();
     /// ```
-    pub fn new() -> Scheduler {
-        Scheduler {
+    pub fn new() -> NormalScheduler {
+        NormalScheduler {
             extensions: Extensions::default(),
             jobs: vec![],
             tz: chrono::Local,
@@ -32,8 +39,8 @@ impl Scheduler {
     }
 
     /// if you want a specified timezone instead of the mathine timezone `chrono::Local`, use this
-    pub fn with_tz<Tz: chrono::TimeZone>(tz: Tz) -> Scheduler<Tz> {
-        Scheduler {
+    pub fn with_tz<Tz: chrono::TimeZone>(tz: Tz) -> NormalScheduler<Tz> {
+        NormalScheduler {
             extensions: Extensions::default(),
             jobs: vec![],
             tz,
@@ -46,7 +53,7 @@ impl Scheduler {
     // }
 }
 
-impl<Tz> Scheduler<Tz>
+impl<Tz> NormalScheduler<Tz>
 where
     Tz: TimeZone + Clone + Sync + Send + Copy + 'static,
     <Tz as TimeZone>::Offset: Send + Sync,
@@ -60,7 +67,7 @@ where
     }
 
     /// add a new task to the scheduler, you must privide something that implements `Job` trait.
-    pub fn add(&mut self, job: BoxedJob<Tz>) -> &mut Scheduler<Tz> {
+    pub fn add(&mut self, job: BoxedJob<Tz>) -> &mut NormalScheduler<Tz> {
         self.jobs.push(job);
         self
     }
@@ -83,7 +90,7 @@ where
                 let job = job.box_clone();
                 tokio::spawn(async move {
                     let job = job;
-                    job.start_schedule(e, tz);
+                    // job.start_schedule(e, tz);
                 });
             }
         }

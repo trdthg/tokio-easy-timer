@@ -3,22 +3,45 @@ mod async_job;
 mod jobschedule;
 mod sync_handler;
 mod sync_job;
+
 pub use self::async_handler::AsyncHandler;
 pub use self::async_job::{AsyncJob, AsyncJobBuilder};
 pub use self::jobschedule::JobScheduleBuilder;
 pub use self::sync_handler::SyncHandler;
 pub use self::sync_job::{SyncJob, SyncJobBuilder};
-use crate::{extensions::Extensions, interval::Interval, prelude::TimeUnits};
-use chrono::TimeZone;
+use crate::{
+    extensions::Extensions, interval::Interval, prelude::TimeUnits, scheduler::item::ScheduleItem,
+};
+use async_trait::async_trait;
 
-pub trait Job<Tz>
-where
-    Tz: TimeZone,
-{
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct JobId(pub usize);
+
+#[async_trait]
+pub trait Job<Tz> {
     fn box_clone(&self) -> Box<dyn Job<Tz> + Send>;
 
-    /// Start spawn jobs
-    fn start_schedule(&self, e: Extensions, tz: Tz);
+    // /// Start spawn jobs
+    // fn start_schedule(&self, e: Extensions, tz: Tz);
+
+    fn current(&mut self) -> Option<ScheduleItem>;
+    fn next(&mut self, tz: Tz) -> Option<ScheduleItem>;
+    // fn run(&'_ self, e: Extensions, tz: Tz) -> Pin<Box<dyn Future<Output = ()> + 'static>>;
+    async fn run(&self, e: Extensions, tz: Tz);
+    // fn run<'a: 'b, 'b>(
+    //     &'a self,
+    //     e: Extensions,
+    //     tz: Tz,
+    // ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>>
+    // where
+    //     Self: 'b;
+
+    fn get_id(&self) -> JobId;
+    fn set_id(&mut self, id: JobId);
+
+    fn start(&mut self);
+
+    fn stop(&mut self);
 }
 
 pub trait JobBuilder<Args> {
@@ -92,7 +115,7 @@ pub trait JobBuilder<Args> {
         self
     }
 
-    fn get_mut_since(&mut self) -> &mut (i32, u32, u32, u32, u32, u32);
+    fn get_mut_since(&mut self) -> &mut (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>);
 
     /// Specify the datetime after which the task will start, the same as `since`
     fn since_datetime(
@@ -104,29 +127,32 @@ pub trait JobBuilder<Args> {
         min: u32,
         sec: u32,
     ) -> &mut Self {
-        *(self.get_mut_since()) = (year, month, day, hour, min, sec);
+        if let (Some(ymd), Some(hms)) = self.get_mut_since() {
+            *ymd = (year, month, day);
+            *hms = (hour, min, sec);
+        }
         self
     }
 
     /// Specify the date after which the task will start, the same as `since`
     fn since_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
-        self.get_mut_since().0 = year;
-        self.get_mut_since().1 = month;
-        self.get_mut_since().2 = day;
+        if let (Some(ymd), _) = self.get_mut_since() {
+            *ymd = (year, month, day);
+        }
         self
     }
 
     /// Specify the time after which the task will start, the same as `since`
     fn since_time(&mut self, hour: u32, min: u32, sec: u32) -> &mut Self {
-        self.get_mut_since().3 = hour;
-        self.get_mut_since().4 = min;
-        self.get_mut_since().5 = sec;
+        if let (_, Some(hms)) = self.get_mut_since() {
+            *hms = (hour, min, sec);
+        }
         self
     }
 
     /// Specify when the task will start after, like `since`
     fn after(&mut self, delay: u64) -> &mut Self {
-        self.get_mut_cron_builder().add_delay(delay);
+        self.get_mut_cron_builder().delay(delay);
         self
     }
 }

@@ -13,7 +13,7 @@ use tokio_easy_timer::prelude::*;
 async fn main() {
     dotenv().ok();
     let bot = Arc::new(Bot::from_env().auto_send());
-    let mut scheduler = Scheduler::new();
+    let mut scheduler = HeapScheduler::new();
     scheduler.add_ext(bot);
 
     scheduler

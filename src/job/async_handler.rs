@@ -21,7 +21,7 @@ macro_rules! impl_handler {
                         f.await;
                     }
                 )
-        }
+            }
         }
     };
 }

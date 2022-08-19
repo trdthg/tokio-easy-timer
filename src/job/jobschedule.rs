@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct JobSchedule {
-    pub since: (i32, u32, u32, u32, u32, u32),
+    pub since: (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>),
     pub delay: u64,
     pub schedule: Schedule,
     pub is_async: bool,
@@ -13,7 +13,7 @@ pub struct JobSchedule {
 }
 
 pub struct JobScheduleBuilder {
-    pub since: (i32, u32, u32, u32, u32, u32),
+    pub since: (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>),
     pub delay: u64,
     pub cron: Vec<Option<String>>,
     pub is_async: bool,
@@ -24,7 +24,7 @@ pub struct JobScheduleBuilder {
 impl JobScheduleBuilder {
     pub fn new() -> Self {
         Self {
-            since: (0, 1, 1, 0, 0, 0),
+            since: (None, None),
             cron: vec![None, None, None, None, None, None, None],
             repeat: 1,
             interval: 1,
@@ -33,7 +33,7 @@ impl JobScheduleBuilder {
         }
     }
 
-    pub fn add_delay(&mut self, delay: u64) -> &mut Self {
+    pub fn delay(&mut self, delay: u64) -> &mut Self {
         self.delay += delay;
         self
     }
@@ -166,3 +166,24 @@ macro_rules! every_start {
 }
 
 every_start!({Seconds, 0}, {Minutes, 1}, {Hours, 2}, {Days, 3}, {Months, 4}, {Weeks, 5}, {Years, 6} | (5) | { Sunday, 1 }, { Monday, 2},  { Tuesday, 3 }, { Wednesday, 4 }, { Thursday, 5 }, { Friday, 6 }, { Saturday, 7 });
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    #[test]
+    fn test() {
+        let cron = cron::Schedule::from_str("0 0 0 * * * *").unwrap();
+        let a = cron.upcoming(chrono::Local).take(1).next();
+        let b = cron.upcoming(chrono::Local).take(1).next();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_since_every() {
+        let cron = cron::Schedule::from_str("0 2/5 0 * * * *").unwrap();
+        for t in cron.upcoming(chrono::Local).take(5).into_iter() {
+            println!("{:?}", t);
+        }
+    }
+}

@@ -9,14 +9,14 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut cheduler = Scheduler::with_tz(chrono::FixedOffset::east(8 * 3600));
+    let mut sheduler = HeapScheduler::with_tz(chrono::FixedOffset::east(8 * 3600));
 
     let config = Arc::new(Mutex::new(Config { id: 1 }));
-    cheduler.add_ext(config);
-    cheduler.add_ext("a".to_string());
-    cheduler.add_ext(1);
+    sheduler.add_ext(config);
+    sheduler.add_ext("a".to_string());
+    sheduler.add_ext(1);
 
-    cheduler
+    sheduler
         .add(
             SyncJob::new()
                 .every(Interval::Monday)
@@ -52,7 +52,6 @@ async fn main() {
                     config.id += 1;
                     println!("{}", config.id);
                 }),
-        )
-        .run_pending()
-        .await;
+        );
+    sheduler.run_pending().await;
 }

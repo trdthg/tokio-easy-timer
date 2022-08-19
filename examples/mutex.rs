@@ -8,29 +8,43 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut cheduler = Scheduler::new();
+    let mut sheduler = HeapScheduler::new();
     let config = Arc::new(Mutex::new(Config { id: 0 }));
-    cheduler.add_ext(config);
+    sheduler.add_ext(config);
 
-    for _ in 0..10000 {
-        cheduler.add(
-            SyncJob::new()
-                .every(20.seconds())
-                .run(|config: Data<Arc<Mutex<Config>>>| {
-                    if let Ok(mut config) = config.lock() {
-                        config.id += 1;
-                    }
-                }),
-        );
+    let job =
+        AsyncJob::new()
+            .every(10.seconds())
+            .run(|config: Data<Arc<Mutex<Config>>>| async move {
+                if let Ok(mut config) = config.lock() {
+                    config.id += 1;
+                }
+            });
+
+    for _ in 0..1000000 {
+        sheduler.add(job.box_clone());
     }
 
-    cheduler.add(SyncJob::new().since_every(10.seconds(), 20.seconds()).run(
+    sheduler.add(SyncJob::new().since_every(5.seconds(), 10.seconds()).run(
         |config: Data<Arc<Mutex<Config>>>| {
             if let Ok(config) = config.lock() {
-                println!("{}", config.id);
+                println!("check: {}", config.id);
             }
         },
     ));
 
-    cheduler.run_pending().await;
+    println!("{}", "开始");
+
+    sheduler.run_pending().await;
+}
+
+#[test]
+fn add_to_1000000() {
+    let sum = Mutex::new(0);
+    for _ in 0..10 {
+        for i in 0..1000000 {
+            *sum.lock().unwrap() += 1;
+        }
+    }
+    println!("{}", *sum.lock().unwrap());
 }
