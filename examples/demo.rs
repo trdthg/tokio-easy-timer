@@ -9,7 +9,7 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut sheduler = HeapScheduler::with_tz(chrono::FixedOffset::east(8 * 3600));
+    let mut sheduler = scheduler::HeapScheduler::with_tz(chrono::FixedOffset::east(8 * 3600));
 
     let config = Arc::new(Mutex::new(Config { id: 1 }));
     sheduler.add_ext(config);

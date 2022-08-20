@@ -143,6 +143,44 @@ where
         })
     }
 
+    fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
+        if self.cancel {
+            return None;
+        }
+        if self.jobschedules.len() == 0 {
+            return None;
+        }
+
+        let mut min = u64::MAX;
+
+        let next_times: Vec<(usize, u64)> = self
+            .jobschedules
+            .iter()
+            .enumerate()
+            .filter_map(|(i, x)| {
+                x.schedule
+                    .upcoming(tz)
+                    .take(1)
+                    .next()
+                    .and_then(|x| Some((i, x.timestamp() as u64)))
+            })
+            .collect();
+
+        let mut min_index = 0;
+        for (i, time) in next_times.iter() {
+            if *time < min {
+                min = *time;
+                min_index = *i;
+            }
+        }
+        self.current_time = min;
+        self.next_schedule_index = min_index;
+        Some(crate::scheduler::item::ScheduleJobItem {
+            time: min,
+            job: Box::new(self.clone()),
+        })
+    }
+
     fn run<'a: 'b, 'b>(
         &'a self,
         e: Extensions,
@@ -157,17 +195,9 @@ where
                 tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
             }
             // handle since
-            if schedule.since != (None, None) {
-                let (ymd, hms) = schedule.since;
-                let hms = hms.unwrap_or((0, 0, 0));
-                let now = chrono::Utc::now().with_timezone(&tz);
-                let ymd = ymd.unwrap_or((now.year(), now.month(), now.day()));
-                let wait_to = tz.ymd(ymd.0, ymd.1, ymd.2).and_hms(hms.0, hms.1, hms.2);
-                let d = wait_to.timestamp() - now.timestamp();
-                if d > 0 {
-                    tokio::time::sleep(Duration::from_secs(d as u64)).await;
-                }
-            }
+            // if let Some(delay) = schedule.get_since_delay_sec(tz) {
+            //     tokio::time::sleep(Duration::from_secs(delay as u64)).await;
+            // }
 
             let e = e.clone();
             // prepare a task for the job
@@ -190,20 +220,20 @@ where
         })
     }
 
-    fn start(&mut self) {
-        self.cancel = false;
-    }
-
-    fn stop(&mut self) {
-        self.cancel = true;
-    }
-
     fn get_id(&self) -> JobId {
         self.id
     }
 
     fn set_id(&mut self, id: JobId) {
         self.id = id;
+    }
+
+    fn start(&mut self) {
+        self.cancel = false;
+    }
+
+    fn stop(&mut self) {
+        self.cancel = true;
     }
 }
 

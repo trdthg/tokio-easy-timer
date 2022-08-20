@@ -1,4 +1,5 @@
 use crate::interval::Interval;
+use chrono::{Datelike, TimeZone};
 use cron::Schedule;
 use std::str::FromStr;
 
@@ -10,6 +11,23 @@ pub struct JobSchedule {
     pub is_async: bool,
     pub repeat: u32,
     pub interval: u64,
+}
+
+impl JobSchedule {
+    pub fn get_since_delay_sec<Tz: TimeZone>(&self, tz: Tz) -> Option<i64> {
+        if self.since != (None, None) {
+            let (ymd, hms) = self.since;
+            let hms = hms.unwrap_or((0, 0, 0));
+            let now = chrono::Utc::now().with_timezone(&tz);
+            let ymd = ymd.unwrap_or((now.year(), now.month(), now.day()));
+            let wait_to = tz.ymd(ymd.0, ymd.1, ymd.2).and_hms(hms.0, hms.1, hms.2);
+            let d = wait_to.timestamp() - now.timestamp();
+            if d > 0 {
+                return Some(d);
+            }
+        }
+        None
+    }
 }
 
 pub struct JobScheduleBuilder {

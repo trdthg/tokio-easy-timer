@@ -1,11 +1,12 @@
 mod data;
 mod type_key;
+
 pub use data::Data;
 use parking_lot::RwLock;
 use std::{any::Any, collections::HashMap, sync::Arc};
 use type_key::TypeKey;
 
-pub trait AsAny: Any {
+trait AsAny: Any {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -26,7 +27,7 @@ pub struct Extensions {
 
 impl Extensions {
     /// insert a type to the map, if already exists, then replace
-    pub(crate) fn insert<T>(&self, data: T)
+    pub fn insert<T>(&self, data: T)
     where
         T: 'static + Send + Sync,
     {
@@ -35,7 +36,7 @@ impl Extensions {
     }
 
     /// this will panic if the required type doesn't exist
-    pub(crate) fn get_data<T>(&self) -> Data<T>
+    pub fn get_data<T>(&self) -> Data<T>
     where
         T: 'static + Send + Sync,
     {

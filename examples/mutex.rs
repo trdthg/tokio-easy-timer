@@ -1,5 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
+use chrono::TimeZone;
 use tokio_easy_timer::prelude::*;
 
 struct Config {
@@ -8,7 +12,7 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut sheduler = HeapScheduler::new();
+    let mut sheduler = scheduler::JobScheduler::new();
     let config = Arc::new(Mutex::new(Config { id: 0 }));
     sheduler.add_ext(config);
 
@@ -21,14 +25,14 @@ async fn main() {
                 }
             });
 
-    for _ in 0..1000000 {
+    for _ in 0..800000 {
         sheduler.add(job.box_clone());
     }
-
-    sheduler.add(SyncJob::new().since_every(5.seconds(), 10.seconds()).run(
-        |config: Data<Arc<Mutex<Config>>>| {
+    sheduler.add_ext(std::time::Instant::now());
+    sheduler.add(AsyncJob::new().since_every(5.seconds(), 10.seconds()).run(
+        |config: Data<Arc<Mutex<Config>>>, start: Data<Instant>| async move {
             if let Ok(config) = config.lock() {
-                println!("check: {}", config.id);
+                println!("[{}] check: {}", start.elapsed().as_secs(), config.id);
             }
         },
     ));

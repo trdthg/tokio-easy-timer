@@ -51,61 +51,6 @@ where
         Box::new((*self).clone())
     }
 
-    fn run<'a: 'b, 'b>(
-        &'a self,
-        e: Extensions,
-        tz: Tz,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
-        let f = self.f.clone();
-        let schedule = self.jobschedules[self.next_schedule_index].clone();
-        Box::pin(async move {
-            // handle delay
-            // println!("delay {}", schedule.delay);
-            if schedule.delay > 0 {
-                tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
-            }
-            // handle since
-            if schedule.since != (None, None) {
-                let (ymd, hms) = schedule.since;
-                let hms = hms.unwrap_or((0, 0, 0));
-                let now = chrono::Utc::now().with_timezone(&tz);
-                let ymd = ymd.unwrap_or((now.year(), now.month(), now.day()));
-                let wait_to = tz.ymd(ymd.0, ymd.1, ymd.2).and_hms(hms.0, hms.1, hms.2);
-                let d = wait_to.timestamp() - now.timestamp();
-                println!("since {:?} {}", schedule.since, d);
-                if d > 0 {
-                    tokio::time::sleep(Duration::from_secs(d as u64)).await;
-                }
-            }
-
-            let e = e.clone();
-            // prepare a task for the job
-            tokio::spawn(async move {
-                // Handle repeat
-                if schedule.is_async {
-                    for i in 0..schedule.repeat {
-                        let e = e.clone();
-                        tokio::task::spawn_blocking(move || {
-                            f.call(&e);
-                        });
-                        if i < schedule.repeat - 1 {
-                            tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
-                        }
-                    }
-                } else {
-                    tokio::task::spawn_blocking(move || {
-                        for i in 0..schedule.repeat {
-                            f.call(&e);
-                            if schedule.interval > 0 && i < schedule.repeat - 1 {
-                                std::thread::sleep(Duration::from_secs(schedule.interval));
-                            }
-                        }
-                    });
-                }
-            });
-        })
-    }
-
     fn current(&mut self) -> Option<ScheduleItem> {
         Some(ScheduleItem {
             id: self.id,
@@ -148,6 +93,90 @@ where
         Some(ScheduleItem {
             id: self.id,
             time: min,
+        })
+    }
+
+    fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
+        if self.cancel {
+            return None;
+        }
+        if self.jobschedules.len() == 0 {
+            return None;
+        }
+
+        let mut min = u64::MAX;
+
+        let next_times: Vec<(usize, u64)> = self
+            .jobschedules
+            .iter()
+            .enumerate()
+            .filter_map(|(i, x)| {
+                x.schedule
+                    .upcoming(tz)
+                    .take(1)
+                    .next()
+                    .and_then(|x| Some((i, x.timestamp() as u64)))
+            })
+            .collect();
+
+        let mut min_index = 0;
+        for (i, time) in next_times.iter() {
+            if *time < min {
+                min = *time;
+                min_index = *i;
+            }
+        }
+        self.current_time = min;
+        self.next_schedule_index = min_index;
+        Some(crate::scheduler::item::ScheduleJobItem {
+            time: min,
+            job: Box::new(self.clone()),
+        })
+    }
+
+    fn run<'a: 'b, 'b>(
+        &'a self,
+        e: Extensions,
+        tz: Tz,
+    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
+        let f = self.f.clone();
+        let schedule = self.jobschedules[self.next_schedule_index].clone();
+        Box::pin(async move {
+            // handle delay
+            // println!("delay {}", schedule.delay);
+            if schedule.delay > 0 {
+                tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
+            }
+            // handle since
+            // if let Some(delay) = schedule.get_since_delay_sec(tz) {
+            //     tokio::time::sleep(Duration::from_secs(delay as u64)).await;
+            // }
+
+            let e = e.clone();
+            // prepare a task for the job
+            tokio::spawn(async move {
+                // Handle repeat
+                if schedule.is_async {
+                    for i in 0..schedule.repeat {
+                        let e = e.clone();
+                        tokio::task::spawn_blocking(move || {
+                            f.call(&e);
+                        });
+                        if i < schedule.repeat - 1 {
+                            tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
+                        }
+                    }
+                } else {
+                    tokio::task::spawn_blocking(move || {
+                        for i in 0..schedule.repeat {
+                            f.call(&e);
+                            if schedule.interval > 0 && i < schedule.repeat - 1 {
+                                std::thread::sleep(Duration::from_secs(schedule.interval));
+                            }
+                        }
+                    });
+                }
+            });
         })
     }
 

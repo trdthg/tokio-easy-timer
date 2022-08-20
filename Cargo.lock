@@ -106,12 +106,11 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 [[package]]
 name = "cron"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d76219e9243e100d5a37676005f08379297f8addfebc247613299600625c734d"
 dependencies = [
  "chrono",
  "nom",
  "once_cell",
+ "timer-cacher",
 ]
 
 [[package]]
@@ -147,6 +146,18 @@ dependencies = [
  "darling_core",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "dashmap"
+version = "5.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
+dependencies = [
+ "cfg-if",
+ "hashbrown",
+ "lock_api",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1178,6 +1189,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "timer-cacher"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "lazy_static",
+ "parking_lot",
+ "timer-utils",
+]
+
+[[package]]
+name = "timer-utils"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
+]
+
+[[package]]
 name = "tinyvec"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1219,9 +1247,12 @@ dependencies = [
  "async-trait",
  "chrono",
  "cron",
+ "dashmap",
  "dotenv",
  "parking_lot",
  "teloxide",
+ "timer-cacher",
+ "timer-utils",
  "tokio",
 ]
 

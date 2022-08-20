@@ -10,7 +10,10 @@ pub use self::jobschedule::JobScheduleBuilder;
 pub use self::sync_handler::SyncHandler;
 pub use self::sync_job::{SyncJob, SyncJobBuilder};
 use crate::{
-    extensions::Extensions, interval::Interval, prelude::TimeUnits, scheduler::item::ScheduleItem,
+    extensions::Extensions,
+    interval::Interval,
+    prelude::TimeUnits,
+    scheduler::item::{ScheduleItem, ScheduleJobItem},
 };
 use async_trait::async_trait;
 
@@ -26,6 +29,8 @@ pub trait Job<Tz> {
 
     fn current(&mut self) -> Option<ScheduleItem>;
     fn next(&mut self, tz: Tz) -> Option<ScheduleItem>;
+
+    fn next_job(&mut self, tz: Tz) -> Option<ScheduleJobItem<Tz>>;
     // fn run(&'_ self, e: Extensions, tz: Tz) -> Pin<Box<dyn Future<Output = ()> + 'static>>;
     async fn run(&self, e: Extensions, tz: Tz);
     // fn run<'a: 'b, 'b>(

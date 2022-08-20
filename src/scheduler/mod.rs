@@ -1,15 +1,12 @@
-use std::{future::Future, pin::Pin};
+use crate::job::Job;
 
-use crate::job::{Job, JobId};
-
-mod archived_scheduler;
 pub mod bucket;
-mod bucket_scheduler;
 mod heap_scheduler;
 pub mod item;
-pub use bucket_scheduler::BucketScheduler;
+mod job_scheduler;
 use chrono::TimeZone;
 pub use heap_scheduler::HeapScheduler;
+pub use job_scheduler::JobScheduler;
 
 pub type BoxedJob<Tz> = Box<dyn Job<Tz> + Send + 'static>;
 
@@ -26,33 +23,26 @@ pub trait Scheduler<Tz: TimeZone> {
     /// Start the timer.
     // fn run(&self) -> Pin<Box<dyn Future<Output = ()>>>;
 
+    async fn run_pending(&mut self) {
+        timer_cacher::init();
+        self.run_pending().await;
+    }
+
     /// Start the timer, block the current thread.
-    async fn run_pending(&mut self);
-    //  {
-    //     Box::pin(async {
-    //         self.run().await;
-    //         std::future::pending::<()>().await;
-    //     })
-    // }
+    async fn run(&mut self);
 
     /// add a new task to the scheduler, which implements `Job` trait.
     fn add(&mut self, job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz>;
 
-    fn get(&self, id: &JobId) -> Option<&BoxedJob<Tz>>;
+    // fn start(&mut self, id: &JobId) {
+    //     if let Some(job) = self.get_mut(id) {
+    //         job.start();
+    //     }
+    // }
 
-    fn get_mut(&mut self, id: &JobId) -> Option<&mut BoxedJob<Tz>>;
-
-    fn remove(&mut self, id: &JobId);
-
-    fn start(&mut self, id: &JobId) {
-        if let Some(job) = self.get_mut(id) {
-            job.start();
-        }
-    }
-
-    fn stop(&mut self, id: &JobId) {
-        if let Some(job) = self.get_mut(id) {
-            job.stop();
-        }
-    }
+    // fn stop(&mut self, id: &JobId) {
+    //     if let Some(job) = self.get_mut(id) {
+    //         job.stop();
+    //     }
+    // }
 }
