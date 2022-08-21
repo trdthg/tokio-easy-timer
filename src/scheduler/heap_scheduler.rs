@@ -105,7 +105,7 @@ where
         // std::future::pending::<()>().await;
     }
 
-    fn add(&mut self, mut job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz> {
+    fn add_job(&mut self, mut job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz> {
         self.max_id += 1;
         job.set_id(crate::JobId(self.max_id));
         if let Some(item) = job.next(self.tz) {

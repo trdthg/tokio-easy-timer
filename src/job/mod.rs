@@ -1,14 +1,14 @@
 mod async_handler;
 mod async_job;
+mod base_job;
 mod jobschedule;
 mod sync_handler;
 mod sync_job;
-
 pub use self::async_handler::AsyncHandler;
-pub use self::async_job::{AsyncJob, AsyncJobBuilder};
+pub use self::async_job::AsyncJob;
 pub use self::jobschedule::JobScheduleBuilder;
 pub use self::sync_handler::SyncHandler;
-pub use self::sync_job::{SyncJob, SyncJobBuilder};
+pub use self::sync_job::SyncJob;
 use crate::{
     extensions::Extensions,
     interval::Interval,
@@ -16,6 +16,7 @@ use crate::{
     scheduler::item::{ScheduleItem, ScheduleJobItem},
 };
 use async_trait::async_trait;
+pub use base_job::BaseJobBuilder;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JobId(pub usize);
@@ -33,6 +34,7 @@ pub trait Job<Tz> {
     fn next_job(&mut self, tz: Tz) -> Option<ScheduleJobItem<Tz>>;
     // fn run(&'_ self, e: Extensions, tz: Tz) -> Pin<Box<dyn Future<Output = ()> + 'static>>;
     async fn run(&self, e: Extensions, tz: Tz);
+
     // fn run<'a: 'b, 'b>(
     //     &'a self,
     //     e: Extensions,
@@ -49,7 +51,7 @@ pub trait Job<Tz> {
     fn stop(&mut self);
 }
 
-pub trait JobBuilder<Args> {
+pub trait JobBuilder {
     /// Constructs a new job builder
     fn new() -> Self;
 

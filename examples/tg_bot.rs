@@ -7,7 +7,7 @@ use teloxide::{
     types::ChatId,
     Bot,
 };
-use tokio_easy_timer::prelude::*;
+use tokio_easy_timer::{prelude::*, BaseJob};
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +16,7 @@ async fn main() {
     let mut scheduler = scheduler::HeapScheduler::new();
     scheduler.add_ext(bot);
 
-    scheduler.add(AsyncJob::new().every(10.seconds()).run(
+    scheduler.add(BaseJob::new().every(10.seconds()).run_async(
         |bot: Data<Arc<AutoSend<Bot>>>| async move {
             bot.send_message(
                 ChatId(std::env::var("CHAT_ID").unwrap().parse().unwrap()),

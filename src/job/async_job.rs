@@ -18,17 +18,10 @@ pub struct AsyncJob<Args, F> {
     pub id: JobId,
     pub f: F,
     pub cancel: bool,
-    pub jobschedules: Vec<JobSchedule>,
+    pub jobschedule: JobSchedule,
     pub current_time: u64,
     pub next_schedule_index: usize,
     pub _phantom: PhantomData<Args>,
-}
-
-pub struct AsyncJobBuilder<Args> {
-    id: JobId,
-    jobschedules: Vec<JobSchedule>,
-    builder: JobScheduleBuilder,
-    _phantom: PhantomData<Args>,
 }
 
 #[async_trait::async_trait]
@@ -109,39 +102,23 @@ where
         if self.cancel {
             return None;
         }
-        if self.jobschedules.len() == 0 {
-            return None;
-        }
 
-        let mut min = u64::MAX;
-
-        let next_times: Vec<(usize, u64)> = self
-            .jobschedules
-            .iter()
-            .enumerate()
-            .filter_map(|(i, x)| {
-                x.schedule
-                    .upcoming(tz)
-                    .take(1)
-                    .next()
-                    .and_then(|x| Some((i, x.timestamp() as u64)))
+        if let Some(next_time) = self
+            .jobschedule
+            .schedule
+            .upcoming(tz)
+            .take(1)
+            .next()
+            .and_then(|x| Some(x.timestamp() as u64))
+        {
+            self.current_time = next_time;
+            Some(ScheduleItem {
+                id: self.id,
+                time: self.current_time,
             })
-            .collect();
-
-        let mut min_index = 0;
-        for (i, time) in next_times.iter() {
-            if *time < min {
-                min = *time;
-                min_index = *i;
-            }
+        } else {
+            None
         }
-        self.current_time = min;
-        self.next_schedule_index = min_index;
-        let min = chrono::Local::now().timestamp() as u64 + 10;
-        Some(ScheduleItem {
-            id: self.id,
-            time: self.current_time,
-        })
     }
 
     fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
@@ -158,7 +135,7 @@ where
         tz: Tz,
     ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
         let f = self.f.clone();
-        let schedule = self.jobschedules[self.next_schedule_index].clone();
+        let schedule = self.jobschedule.clone();
         Box::pin(async move {
             // handle delay
             // println!("delay {}", schedule.delay);
@@ -205,86 +182,5 @@ where
 
     fn stop(&mut self) {
         self.cancel = true;
-    }
-}
-
-impl<Args> AsyncJobBuilder<Args>
-where
-    Args: Clone + 'static + Send + Sync,
-{
-    /// Constructs a new async job
-    pub fn run<Tz, F>(&mut self, f: F) -> BoxedJob<Tz>
-    where
-        F: AsyncHandler<Args> + Send + 'static + Clone + Copy,
-        Tz: TimeZone + Send + Sync + 'static + Clone + Copy,
-        <Tz as TimeZone>::Offset: Send + Sync,
-    {
-        self.and();
-        let job: AsyncJob<Args, F> = AsyncJob {
-            id: self.id,
-            f: f.to_owned(),
-            jobschedules: self.jobschedules.clone(),
-            _phantom: PhantomData,
-            cancel: false,
-            current_time: 0,
-            next_schedule_index: 0,
-        };
-        let res = Box::new(job);
-        res
-    }
-
-    // / Constructs a new async job
-    // pub fn build<Tz, F>(&mut self, f: F) -> AsyncJob<Args, F>
-    // where
-    //     F: AsyncHandler<Args> + Send + 'static + Clone + Copy,
-    //     Tz: TimeZone + Send + Sync + 'static + Clone + Copy,
-    //     <Tz as TimeZone>::Offset: Send + Sync,
-    // {
-    //     self.and();
-    //     let job: AsyncJob<Args, F> = AsyncJob {
-    //         f: f.to_owned(),
-    //         jobschedules: self.jobschedules.clone(),
-    //         _phantom: PhantomData,
-    //     };
-    //     job
-    // }
-}
-
-impl<Args> JobBuilder<Args> for AsyncJobBuilder<Args> {
-    fn new() -> Self {
-        Self {
-            id: JobId(0),
-            _phantom: PhantomData,
-            jobschedules: vec![],
-            builder: JobScheduleBuilder::new(),
-        }
-    }
-
-    fn and(&mut self) -> &mut Self {
-        self.jobschedules.push(self.builder.build());
-        self.builder = JobScheduleBuilder::new();
-        self
-    }
-
-    fn get_mut_cron_builder(&mut self) -> &mut JobScheduleBuilder {
-        &mut self.builder
-    }
-
-    fn get_mut_since(&mut self) -> &mut (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>) {
-        &mut self.builder.since
-    }
-
-    fn repeat_seq(&mut self, n: u32, interval: Interval) -> &mut Self {
-        self.builder.is_async = false;
-        self.builder.repeat = n;
-        self.builder.interval = interval.to_sec();
-        self
-    }
-
-    fn repeat_async(&mut self, n: u32, interval: Interval) -> &mut Self {
-        self.builder.is_async = true;
-        self.builder.repeat = n;
-        self.builder.interval = interval.to_sec();
-        self
     }
 }

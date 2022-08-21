@@ -32,7 +32,17 @@ pub trait Scheduler<Tz: TimeZone> {
     async fn run(&mut self);
 
     /// add a new task to the scheduler, which implements `Job` trait.
-    fn add(&mut self, job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz>;
+    fn add_job(&mut self, job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz>;
+
+    fn add(&mut self, jobs: Vec<BoxedJob<Tz>>) -> &mut dyn Scheduler<Tz>
+    where
+        Self: Sized,
+    {
+        for job in jobs {
+            self.add_job(job);
+        }
+        self
+    }
 
     // fn start(&mut self, id: &JobId) {
     //     if let Some(job) = self.get_mut(id) {
