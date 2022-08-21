@@ -90,46 +90,17 @@ where
         }
         self.current_time = min;
         self.next_schedule_index = min_index;
+        let min = chrono::Local::now().timestamp() as u64 + 10;
         Some(ScheduleItem {
             id: self.id,
-            time: min,
+            time: self.current_time,
         })
     }
 
     fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
-        if self.cancel {
-            return None;
-        }
-        if self.jobschedules.len() == 0 {
-            return None;
-        }
-
-        let mut min = u64::MAX;
-
-        let next_times: Vec<(usize, u64)> = self
-            .jobschedules
-            .iter()
-            .enumerate()
-            .filter_map(|(i, x)| {
-                x.schedule
-                    .upcoming(tz)
-                    .take(1)
-                    .next()
-                    .and_then(|x| Some((i, x.timestamp() as u64)))
-            })
-            .collect();
-
-        let mut min_index = 0;
-        for (i, time) in next_times.iter() {
-            if *time < min {
-                min = *time;
-                min_index = *i;
-            }
-        }
-        self.current_time = min;
-        self.next_schedule_index = min_index;
+        self.next(tz);
         Some(crate::scheduler::item::ScheduleJobItem {
-            time: min,
+            time: self.current_time,
             job: Box::new(self.clone()),
         })
     }

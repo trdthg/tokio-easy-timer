@@ -25,7 +25,7 @@ pub trait Scheduler<Tz: TimeZone> {
 
     async fn run_pending(&mut self) {
         timer_cacher::init();
-        self.run_pending().await;
+        self.run().await;
     }
 
     /// Start the timer, block the current thread.
