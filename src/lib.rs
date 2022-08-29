@@ -12,5 +12,5 @@ pub mod prelude {
     pub use crate::scheduler;
     pub use crate::Data;
     pub use crate::Scheduler;
-    pub use crate::{Job, JobBuilder, JobId};
+    pub use crate::{Job, JobBuilder, BaseJob, JobId};
 }

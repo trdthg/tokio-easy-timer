@@ -27,24 +27,26 @@ pub struct BaseJob {
     pub cancel: bool,
     pub jobschedule: JobSchedule,
     pub current_time: u64,
-    pub next_schedule_index: usize,
-}
-
-pub struct BaseJobBuilder {
-    id: JobId,
-    jobschedules: Option<Vec<JobSchedule>>,
-    builder: JobScheduleBuilder,
 }
 
 impl BaseJob {
-    fn current(&mut self) -> Option<ScheduleItem> {
+  pub fn new(jobschedule: JobSchedule) -> Self {
+        Self {
+            id: JobId(0),
+            cancel: false,
+            jobschedule,
+            current_time: 0,
+        }
+    }
+
+    pub fn current(&mut self) -> Option<ScheduleItem> {
         Some(ScheduleItem {
             id: self.id,
             time: self.current_time,
         })
     }
 
-    fn next<Tz: TimeZone>(&mut self, tz: Tz) -> Option<ScheduleItem> {
+    pub fn next<Tz: TimeZone>(&mut self, tz: Tz) -> Option<ScheduleItem> {
         if self.cancel {
             return None;
         }
@@ -86,6 +88,12 @@ impl BaseJob {
     }
 }
 
+pub struct BaseJobBuilder {
+    id: JobId,
+    jobschedules: Option<Vec<JobSchedule>>,
+    builder: JobScheduleBuilder,
+}
+
 impl BaseJobBuilder {
     pub fn run_sync<Tz, F, Args>(&mut self, f: F) -> Vec<BoxedJob<Tz>>
     where
@@ -99,13 +107,9 @@ impl BaseJobBuilder {
         let mut res = vec![];
         for x in schedules.into_iter() {
             let job: BoxedJob<Tz> = Box::new(SyncJob {
-                id: self.id,
                 f: f.clone(),
-                cancel: false,
-                jobschedule: x,
                 _phantom: PhantomData,
-                current_time: 0,
-                next_schedule_index: 0,
+                info: BaseJob::new(x),
             });
             res.push(job);
         }
@@ -124,13 +128,9 @@ impl BaseJobBuilder {
         let mut res = vec![];
         for x in schedules.into_iter() {
             let job: BoxedJob<Tz> = Box::new(AsyncJob {
-                id: self.id,
                 f: f.clone(),
-                cancel: false,
-                jobschedule: x,
                 _phantom: PhantomData,
-                current_time: 0,
-                next_schedule_index: 0,
+                info: BaseJob::new(x),
             });
             res.push(job);
         }

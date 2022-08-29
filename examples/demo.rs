@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use tokio_easy_timer::{prelude::*, BaseJob};
+use tokio_easy_timer::prelude::*;
 
 struct Config {
     id: i32,

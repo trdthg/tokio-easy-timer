@@ -17,19 +17,15 @@ use crate::{
 };
 
 use super::{
+    base_job::BaseJob,
     jobschedule::{self, JobSchedule, JobScheduleBuilder},
     Job, JobBuilder, JobId, SyncHandler,
 };
 
-#[derive(Clone)]
 pub struct SyncJob<Args, F> {
-    pub id: JobId,
     pub f: F,
-    pub cancel: bool,
-    pub jobschedule: JobSchedule,
-    pub current_time: u64,
-    pub next_schedule_index: usize,
     pub _phantom: PhantomData<Args>,
+    pub info: BaseJob,
 }
 
 use async_trait::async_trait;
@@ -42,46 +38,22 @@ where
     <Tz as TimeZone>::Offset: Send,
 {
     fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
-        Box::new((*self).clone())
-    }
-
-    fn current(&mut self) -> Option<ScheduleItem> {
-        Some(ScheduleItem {
-            id: self.id,
-            time: self.current_time,
+        Box::new(SyncJob {
+            f: self.f.clone(),
+            _phantom: PhantomData::default(),
+            info: self.info.clone(),
         })
     }
 
     fn next(&mut self, tz: Tz) -> Option<ScheduleItem> {
-        if self.cancel {
-            return None;
-        }
-
-        let mut min = u64::MAX;
-
-        if let Some(next_time) = self
-            .jobschedule
-            .schedule
-            .upcoming(tz)
-            .take(1)
-            .next()
-            .and_then(|x| Some(x.timestamp() as u64))
-        {
-            self.current_time = next_time;
-            Some(ScheduleItem {
-                id: self.id,
-                time: self.current_time,
-            })
-        } else {
-            None
-        }
+        self.info.next(tz)
     }
 
     fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
-        self.next(tz);
+        self.info.next(tz);
         Some(crate::scheduler::item::ScheduleJobItem {
-            time: self.current_time,
-            job: Box::new(self.clone()),
+            time: self.info.current_time,
+            job: self.box_clone(),
         })
     }
 
@@ -91,7 +63,7 @@ where
         tz: Tz,
     ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
         let f = self.f.clone();
-        let schedule = self.jobschedule.clone();
+        let schedule = self.info.jobschedule.clone();
         Box::pin(async move {
             // handle delay
             // println!("delay {}", schedule.delay);
@@ -132,18 +104,10 @@ where
     }
 
     fn get_id(&self) -> JobId {
-        self.id
+        self.info.id
     }
 
     fn set_id(&mut self, id: JobId) {
-        self.id = id;
-    }
-
-    fn start(&mut self) {
-        self.cancel = false;
-    }
-
-    fn stop(&mut self) {
-        self.cancel = true;
+        self.info.id = id;
     }
 }

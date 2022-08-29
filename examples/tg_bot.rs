@@ -7,7 +7,7 @@ use teloxide::{
     types::ChatId,
     Bot,
 };
-use tokio_easy_timer::{prelude::*, BaseJob};
+use tokio_easy_timer::prelude::*;
 
 #[tokio::main]
 async fn main() {

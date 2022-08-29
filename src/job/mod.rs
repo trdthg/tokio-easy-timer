@@ -25,30 +25,15 @@ pub struct JobId(pub usize);
 pub trait Job<Tz> {
     fn box_clone(&self) -> Box<dyn Job<Tz> + Send>;
 
-    // /// Start spawn jobs
-    // fn start_schedule(&self, e: Extensions, tz: Tz);
-
-    fn current(&mut self) -> Option<ScheduleItem>;
     fn next(&mut self, tz: Tz) -> Option<ScheduleItem>;
 
     fn next_job(&mut self, tz: Tz) -> Option<ScheduleJobItem<Tz>>;
-    // fn run(&'_ self, e: Extensions, tz: Tz) -> Pin<Box<dyn Future<Output = ()> + 'static>>;
-    async fn run(&self, e: Extensions, tz: Tz);
 
-    // fn run<'a: 'b, 'b>(
-    //     &'a self,
-    //     e: Extensions,
-    //     tz: Tz,
-    // ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>>
-    // where
-    //     Self: 'b;
+    // /// Start spawn jobs
+    async fn run(&self, e: Extensions, tz: Tz);
 
     fn get_id(&self) -> JobId;
     fn set_id(&mut self, id: JobId);
-
-    fn start(&mut self);
-
-    fn stop(&mut self);
 }
 
 pub trait JobBuilder {

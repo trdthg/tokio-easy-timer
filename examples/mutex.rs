@@ -3,8 +3,7 @@ use std::{
     time::Instant,
 };
 
-use chrono::TimeZone;
-use tokio_easy_timer::{prelude::*, BaseJob};
+use tokio_easy_timer::prelude::*;
 
 struct Config {
     id: i32,
