@@ -16,7 +16,7 @@ async fn main() {
     scheduler.add_ext("a".to_string());
     scheduler.add_ext(1);
 
-    scheduler.add(
+    scheduler.add_syncbuilder(
         BaseJob::new()
             .every(Interval::Monday)
             .repeat_seq(3, 1.seconds())
@@ -24,7 +24,7 @@ async fn main() {
                 // Some havey job, like complex calculate or read/write from DB.
             }),
     );
-    scheduler.add(
+    scheduler.add_asyncbuilder(
         BaseJob::new()
             // Runs every 90 minutes after 14:13:00 every Saturday
             .every(Interval::Saturday)

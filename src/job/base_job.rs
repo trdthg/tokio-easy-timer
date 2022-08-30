@@ -17,7 +17,9 @@ use crate::{
 };
 
 use super::{
+    async_job::AsyncJobBuilder,
     jobschedule::{self, JobSchedule, JobScheduleBuilder},
+    sync_job::SyncJobBuilder,
     AsyncHandler, AsyncJob, Job, JobBuilder, JobId, SyncHandler, SyncJob,
 };
 
@@ -30,7 +32,7 @@ pub struct BaseJob {
 }
 
 impl BaseJob {
-  pub fn new(jobschedule: JobSchedule) -> Self {
+    pub fn new(jobschedule: JobSchedule) -> Self {
         Self {
             id: JobId(0),
             cancel: false,
@@ -95,43 +97,39 @@ pub struct BaseJobBuilder {
 }
 
 impl BaseJobBuilder {
-    pub fn run_sync<Tz, F, Args>(&mut self, f: F) -> Vec<BoxedJob<Tz>>
+    pub fn run_sync<F, Args>(&mut self, f: F) -> Vec<SyncJobBuilder<Args, F>>
     where
         F: SyncHandler<Args> + Send + 'static + Copy,
         Args: Clone + 'static + Send + Sync,
-        Tz: TimeZone + Clone + Send + Copy + 'static,
-        <Tz as TimeZone>::Offset: Send,
     {
         self.and();
         let schedules = self.jobschedules.take().unwrap_or_default().into_iter();
         let mut res = vec![];
         for x in schedules.into_iter() {
-            let job: BoxedJob<Tz> = Box::new(SyncJob {
+            let job = SyncJobBuilder {
                 f: f.clone(),
                 _phantom: PhantomData,
                 info: BaseJob::new(x),
-            });
+            };
             res.push(job);
         }
         res
     }
 
-    pub fn run_async<Tz, F, Args>(&mut self, f: F) -> Vec<BoxedJob<Tz>>
+    pub fn run_async<F, Args>(&mut self, f: F) -> Vec<AsyncJobBuilder<Args, F>>
     where
         F: AsyncHandler<Args> + Send + 'static + Copy,
         Args: Clone + 'static + Send + Sync,
-        Tz: TimeZone + Clone + Send + Copy + 'static,
-        <Tz as TimeZone>::Offset: Send,
     {
         self.and();
         let schedules = self.jobschedules.take().unwrap_or_default().into_iter();
         let mut res = vec![];
         for x in schedules.into_iter() {
-            let job: BoxedJob<Tz> = Box::new(AsyncJob {
+            let job = AsyncJobBuilder {
                 f: f.clone(),
                 _phantom: PhantomData,
                 info: BaseJob::new(x),
-            });
+            };
             res.push(job);
         }
         res

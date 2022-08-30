@@ -15,14 +15,37 @@ use super::{
 };
 
 #[derive(Clone)]
-pub struct AsyncJob<Args, F> {
+pub struct AsyncJob<Args, F, Tz> {
+    pub tz: Tz,
     pub f: F,
     pub _phantom: PhantomData<Args>,
     pub info: BaseJob,
 }
 
+#[derive(Clone)]
+pub struct AsyncJobBuilder<Args, F> {
+    pub f: F,
+    pub _phantom: PhantomData<Args>,
+    pub info: BaseJob,
+}
+
+impl<Args, F> AsyncJobBuilder<Args, F>
+where
+    F: AsyncHandler<Args> + Send + 'static + Copy,
+    Args: Send + 'static + Clone,
+{
+    pub fn with_tz<Tz>(&self, tz: Tz) -> AsyncJob<Args, F, Tz> {
+        AsyncJob {
+            tz,
+            f: self.f.clone(),
+            _phantom: PhantomData::default(),
+            info: self.info.clone(),
+        }
+    }
+}
+
 #[async_trait::async_trait]
-impl<Args, F, Tz> Job<Tz> for AsyncJob<Args, F>
+impl<Args, F, Tz> Job<Tz> for AsyncJob<Args, F, Tz>
 where
     F: AsyncHandler<Args> + Send + 'static + Copy,
     Args: Send + 'static + Clone,
@@ -31,6 +54,7 @@ where
 {
     fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
         Box::new(AsyncJob {
+            tz: self.tz.clone(),
             f: self.f.clone(),
             _phantom: PhantomData::default(),
             info: self.info.clone(),

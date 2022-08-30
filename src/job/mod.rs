@@ -5,10 +5,10 @@ mod jobschedule;
 mod sync_handler;
 mod sync_job;
 pub use self::async_handler::AsyncHandler;
-pub use self::async_job::AsyncJob;
+pub use self::async_job::{AsyncJob, AsyncJobBuilder};
 pub use self::jobschedule::JobScheduleBuilder;
 pub use self::sync_handler::SyncHandler;
-pub use self::sync_job::SyncJob;
+pub use self::sync_job::{SyncJob, SyncJobBuilder};
 use crate::{
     extensions::Extensions,
     interval::Interval,

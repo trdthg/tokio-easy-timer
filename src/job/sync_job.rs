@@ -22,15 +22,37 @@ use super::{
     Job, JobBuilder, JobId, SyncHandler,
 };
 
-pub struct SyncJob<Args, F> {
+pub struct SyncJob<Args, F, Tz> {
+    pub tz: Tz,
     pub f: F,
     pub _phantom: PhantomData<Args>,
     pub info: BaseJob,
 }
 
+pub struct SyncJobBuilder<Args, F> {
+    pub f: F,
+    pub _phantom: PhantomData<Args>,
+    pub info: BaseJob,
+}
+
+impl<Args, F> SyncJobBuilder<Args, F>
+where
+    F: SyncHandler<Args> + Send + 'static + Copy,
+    Args: Send + 'static + Clone,
+{
+    pub fn with_tz<Tz>(&self, tz: Tz) -> SyncJob<Args, F, Tz> {
+        SyncJob {
+            tz,
+            f: self.f.clone(),
+            _phantom: PhantomData::default(),
+            info: self.info.clone(),
+        }
+    }
+}
+
 use async_trait::async_trait;
 #[async_trait]
-impl<Args, F, Tz> Job<Tz> for SyncJob<Args, F>
+impl<Args, F, Tz> Job<Tz> for SyncJob<Args, F, Tz>
 where
     F: SyncHandler<Args> + Send + 'static + Copy,
     Args: Send + 'static + Clone,
@@ -39,6 +61,7 @@ where
 {
     fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
         Box::new(SyncJob {
+            tz: self.tz.clone(),
             f: self.f.clone(),
             _phantom: PhantomData::default(),
             info: self.info.clone(),

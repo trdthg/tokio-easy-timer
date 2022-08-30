@@ -16,7 +16,7 @@ async fn main() {
     scheduler.add_ext(config);
 
     for _ in 0..800000 {
-        scheduler.add(BaseJob::new().every(10.seconds()).run_async(
+        scheduler.add_asyncbuilder(BaseJob::new().every(10.seconds()).run_async(
             |config: Data<Arc<Mutex<Config>>>| async move {
                 if let Ok(mut config) = config.lock() {
                     config.id += 1;
@@ -26,7 +26,7 @@ async fn main() {
     }
 
     scheduler.add_ext(std::time::Instant::now());
-    scheduler.add(
+    scheduler.add_asyncbuilder(
         BaseJob::new()
             .since_every(5.seconds(), 10.seconds())
             .run_async(

@@ -16,7 +16,7 @@ async fn main() {
     let mut scheduler = scheduler::HeapScheduler::new();
     scheduler.add_ext(bot);
 
-    scheduler.add(BaseJob::new().every(10.seconds()).run_async(
+    scheduler.add_asyncbuilder(BaseJob::new().every(10.seconds()).run_async(
         |bot: Data<Arc<AutoSend<Bot>>>| async move {
             bot.send_message(
                 ChatId(std::env::var("CHAT_ID").unwrap().parse().unwrap()),

@@ -1,4 +1,4 @@
-use crate::job::Job;
+use crate::job::{Job, SyncJobBuilder};
 
 pub mod bucket;
 mod heap_scheduler;
@@ -23,6 +23,8 @@ pub trait Scheduler<Tz: TimeZone> {
     /// Start the timer.
     // fn run(&self) -> Pin<Box<dyn Future<Output = ()>>>;
 
+    fn get_tz(&self) -> Tz;
+
     async fn run_pending(&mut self) {
         timer_cacher::init();
         self.run().await;
@@ -40,6 +42,42 @@ pub trait Scheduler<Tz: TimeZone> {
     {
         for job in jobs {
             self.add_job(job);
+        }
+        self
+    }
+
+    fn add_syncbuilder<Args, F>(
+        &mut self,
+        jobs: Vec<SyncJobBuilder<Args, F>>,
+    ) -> &mut dyn Scheduler<Tz>
+    where
+        Self: Sized,
+        F: crate::job::SyncHandler<Args> + Send + 'static + Copy,
+        Args: Send + 'static + Clone,
+        Tz: TimeZone + Send + Copy + 'static,
+        <Tz as TimeZone>::Offset: Send,
+    {
+        for job in jobs {
+            let job = job.with_tz(self.get_tz());
+            self.add_job(Box::new(job));
+        }
+        self
+    }
+
+    fn add_asyncbuilder<Args, F>(
+        &mut self,
+        jobs: Vec<crate::job::AsyncJobBuilder<Args, F>>,
+    ) -> &mut dyn Scheduler<Tz>
+    where
+        Self: Sized,
+        F: crate::job::AsyncHandler<Args> + Send + 'static + Copy,
+        Args: Send + 'static + Clone,
+        Tz: TimeZone + Send + Copy + 'static,
+        <Tz as TimeZone>::Offset: Send,
+    {
+        for job in jobs {
+            let job = job.with_tz(self.get_tz());
+            self.add_job(Box::new(job));
         }
         self
     }

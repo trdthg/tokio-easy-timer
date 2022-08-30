@@ -51,6 +51,9 @@ where
     Tz: TimeZone + Clone + Sync + Send + Copy + 'static,
     <Tz as TimeZone>::Offset: Send + Sync,
 {
+    fn get_tz(&self) -> Tz {
+        self.tz
+    }
     /// Start the timer, block the current thread.
     async fn run(&mut self) {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
