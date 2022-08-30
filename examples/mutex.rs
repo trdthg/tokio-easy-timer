@@ -11,31 +11,33 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut scheduler = scheduler::JobScheduler::new();
+    let mut scheduler = scheduler::HeapScheduler::new();
     let config = Arc::new(Mutex::new(Config { id: 0 }));
     scheduler.add_ext(config);
 
-    for _ in 0..800000 {
-        scheduler.add_asyncbuilder(BaseJob::new().every(10.seconds()).run_async(
-            |config: Data<Arc<Mutex<Config>>>| async move {
-                if let Ok(mut config) = config.lock() {
-                    config.id += 1;
-                }
-            },
-        ));
+    let builder = BaseJob::new().every(10.seconds()).run_async(
+        |config: Data<Arc<Mutex<Config>>>| async move {
+            if let Ok(mut config) = config.lock() {
+                config.id += 1;
+            }
+        },
+    );
+    for i in 0..400000 {
+        if i % 10000 == 0 {
+            println!("{i}");
+        }
+        scheduler.add_asyncbuilder(builder.clone());
     }
 
     scheduler.add_ext(std::time::Instant::now());
-    scheduler.add_asyncbuilder(
+    scheduler.add_syncbuilder(
         BaseJob::new()
             .since_every(5.seconds(), 10.seconds())
-            .run_async(
-                |config: Data<Arc<Mutex<Config>>>, start: Data<Instant>| async move {
-                    if let Ok(config) = config.lock() {
-                        println!("[{}] check: {}", start.elapsed().as_secs(), config.id);
-                    }
-                },
-            ),
+            .run_sync(|config: Data<Arc<Mutex<Config>>>, start: Data<Instant>| {
+                if let Ok(config) = config.lock() {
+                    println!("[{}] check: {}", start.elapsed().as_secs(), config.id);
+                }
+            }),
     );
 
     println!("{}", "开始");

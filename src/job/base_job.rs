@@ -1,17 +1,8 @@
-use std::{
-    future::Future,
-    hash::Hash,
-    marker::PhantomData,
-    pin::Pin,
-    sync::{Arc, Mutex},
-};
+use std::marker::PhantomData;
 
-use std::time::Duration;
-
-use chrono::{Datelike, TimeZone};
+use chrono::TimeZone;
 
 use crate::{
-    extensions::Extensions,
     interval::Interval,
     scheduler::{item::ScheduleItem, BoxedJob},
 };

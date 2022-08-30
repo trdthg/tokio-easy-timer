@@ -22,11 +22,12 @@ use super::{
     Job, JobBuilder, JobId, SyncHandler,
 };
 
-pub struct SyncJob<Args, F, Tz> {
+pub struct SyncJob<Args, F, Tz: TimeZone> {
     pub tz: Tz,
     pub f: F,
     pub _phantom: PhantomData<Args>,
     pub info: BaseJob,
+    pub iter: cron::OwnedScheduleIterator<Tz>,
 }
 
 pub struct SyncJobBuilder<Args, F> {
@@ -40,12 +41,13 @@ where
     F: SyncHandler<Args> + Send + 'static + Copy,
     Args: Send + 'static + Clone,
 {
-    pub fn with_tz<Tz>(&self, tz: Tz) -> SyncJob<Args, F, Tz> {
+    pub fn with_tz<Tz: TimeZone>(&self, tz: Tz) -> SyncJob<Args, F, Tz> {
         SyncJob {
-            tz,
+            tz: tz.clone(),
             f: self.f.clone(),
             _phantom: PhantomData::default(),
             info: self.info.clone(),
+            iter: self.info.jobschedule.schedule.upcoming_owned(tz),
         }
     }
 }
@@ -65,11 +67,24 @@ where
             f: self.f.clone(),
             _phantom: PhantomData::default(),
             info: self.info.clone(),
+            iter: self
+                .info
+                .jobschedule
+                .schedule
+                .upcoming_owned(self.tz.clone()),
         })
     }
 
     fn next(&mut self, tz: Tz) -> Option<ScheduleItem> {
-        self.info.next(tz)
+        // self.info.next(tz)
+        if let Some(next_time) = self.iter.next().and_then(|x| Some(x.timestamp() as u64)) {
+            Some(ScheduleItem {
+                id: self.info.id,
+                time: next_time,
+            })
+        } else {
+            None
+        }
     }
 
     fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
