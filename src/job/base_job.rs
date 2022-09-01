@@ -39,31 +39,6 @@ impl BaseJob {
         })
     }
 
-    pub fn next<Tz: TimeZone>(&mut self, tz: Tz) -> Option<ScheduleItem> {
-        if self.cancel {
-            return None;
-        }
-
-        let mut min = u64::MAX;
-
-        if let Some(next_time) = self
-            .jobschedule
-            .schedule
-            .upcoming(tz)
-            .take(1)
-            .next()
-            .and_then(|x| Some(x.timestamp() as u64))
-        {
-            self.current_time = next_time;
-            Some(ScheduleItem {
-                id: self.id,
-                time: self.current_time,
-            })
-        } else {
-            None
-        }
-    }
-
     fn get_id(&self) -> JobId {
         self.id
     }

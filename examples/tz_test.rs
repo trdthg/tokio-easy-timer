@@ -57,5 +57,8 @@ impl Builder2Job {
 
 fn main() {
     let s1 = Scheduler::new();
-    
+
+    for i in 0..1 {
+        println!("{i}");
+    }
 }

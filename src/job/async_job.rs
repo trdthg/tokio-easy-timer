@@ -67,38 +67,42 @@ where
         })
     }
 
-    fn next(&mut self, tz: Tz) -> Option<ScheduleItem> {
+    fn next(&mut self) -> Option<ScheduleItem> {
         if let Some(next_time) = self.iter.next().and_then(|x| Some(x.timestamp() as u64)) {
-            Some(ScheduleItem {
+            let res = Some(ScheduleItem {
                 id: self.info.id,
                 time: next_time,
+            });
+            res
+        } else {
+            None
+        }
+    }
+
+    fn next_job(&mut self) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
+        if let Some(next_time) = self.iter.next().and_then(|x| Some(x.timestamp() as u64)) {
+            Some(crate::scheduler::item::ScheduleJobItem {
+                time: next_time,
+                job: self.box_clone(),
             })
         } else {
             None
         }
     }
 
-    fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
-        self.info.next(tz);
-        Some(crate::scheduler::item::ScheduleJobItem {
-            time: self.info.current_time,
-            job: self.box_clone(),
-        })
-    }
-
-    fn run<'a: 'b, 'b>(
-        &'a self,
-        e: Extensions,
-        tz: Tz,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
+    fn run<'a: 'b, 'b>(&'a self, e: Extensions) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
         let f = self.f.clone();
         let schedule = self.info.jobschedule.clone();
         Box::pin(async move {
+            tokio::spawn(async move {
+                f.call(&e).await;
+            });
+            return;
             // handle delay
             // println!("delay {}", schedule.delay);
-            if schedule.delay > 0 {
-                tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
-            }
+            // if schedule.delay > 0 {
+            //     tokio::time::sleep(Duration::from_secs(schedule.delay)).await;
+            // }
             // handle since
             // if let Some(delay) = schedule.get_since_delay_sec(tz) {
             //     tokio::time::sleep(Duration::from_secs(delay as u64)).await;
@@ -106,22 +110,20 @@ where
 
             let e = e.clone();
             // prepare a task for the job
-            tokio::spawn(async move {
-                // Handle repeat
-                for i in 0..schedule.repeat {
-                    if schedule.is_async {
-                        let e = e.clone();
-                        tokio::spawn(async move {
-                            f.call(&e).await;
-                        });
-                    } else {
+            // Handle repeat
+            for i in 0..schedule.repeat {
+                if schedule.is_async {
+                    let e = e.clone();
+                    tokio::spawn(async move {
                         f.call(&e).await;
-                    }
-                    if schedule.interval > 0 && i < schedule.repeat - 1 {
-                        tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
-                    }
+                    });
+                } else {
+                    f.call(&e).await;
                 }
-            });
+                if schedule.interval > 0 && i < schedule.repeat - 1 {
+                    tokio::time::sleep(Duration::from_secs(schedule.interval)).await;
+                }
+            }
         })
     }
 
