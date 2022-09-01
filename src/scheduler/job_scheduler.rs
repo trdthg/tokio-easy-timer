@@ -96,7 +96,7 @@ where
                 }
 
                 // prepare the next and send it out
-                let next = job.next_job(tz);
+                let next = job.next_job();
                 if let Some(next) = next {
                     if let Err(e) = tx.send(next) {
                         println!("send next job failed: {}", e);
@@ -104,7 +104,7 @@ where
                 }
 
                 // run
-                let fut = job.run(e, tz);
+                let fut = job.run(e);
                 fut.await;
             });
         }
@@ -114,7 +114,7 @@ where
     fn add_job(&mut self, mut job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz> {
         self.max_id += 1;
         job.set_id(crate::JobId(self.max_id));
-        if let Some(item) = job.next_job(self.tz) {
+        if let Some(item) = job.next_job() {
             self.heap.add(item);
         }
         self

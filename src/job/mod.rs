@@ -25,12 +25,12 @@ pub struct JobId(pub usize);
 pub trait Job<Tz> {
     fn box_clone(&self) -> Box<dyn Job<Tz> + Send>;
 
-    fn next(&mut self, tz: Tz) -> Option<ScheduleItem>;
+    fn next(&mut self) -> Option<ScheduleItem>;
 
-    fn next_job(&mut self, tz: Tz) -> Option<ScheduleJobItem<Tz>>;
+    fn next_job(&mut self) -> Option<ScheduleJobItem<Tz>>;
 
     // /// Start spawn jobs
-    async fn run(&self, e: Extensions, tz: Tz);
+    async fn run(&self, e: Extensions);
 
     fn get_id(&self) -> JobId;
     fn set_id(&mut self, id: JobId);

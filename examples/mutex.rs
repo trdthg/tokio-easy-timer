@@ -11,7 +11,7 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    let mut scheduler = scheduler::HeapScheduler::new();
+    let mut scheduler = scheduler::TimingWheelScheduler::new();
     let config = Arc::new(Mutex::new(Config { id: 0 }));
     scheduler.add_ext(config);
 
@@ -22,7 +22,8 @@ async fn main() {
             }
         },
     );
-    for i in 0..400000 {
+
+    for i in 0..100000 {
         if i % 10000 == 0 {
             println!("{i}");
         }

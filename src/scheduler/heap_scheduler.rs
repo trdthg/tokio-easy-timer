@@ -92,7 +92,7 @@ where
                     }
 
                     // prepare the next and send it out
-                    let next = job.next(tz);
+                    let next = job.next();
                     if let Some(next) = next {
                         if let Err(e) = tx.send(next) {
                             println!("send next job failed: {}", e);
@@ -100,7 +100,7 @@ where
                     }
 
                     // run
-                    let fut = job.run(e, tz);
+                    let fut = job.run(e);
                     fut.await;
                 });
             }
@@ -111,7 +111,7 @@ where
     fn add_job(&mut self, mut job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz> {
         self.max_id += 1;
         job.set_id(crate::JobId(self.max_id));
-        if let Some(item) = job.next(self.tz) {
+        if let Some(item) = job.next() {
             self.heap.add(item);
         }
         self.jobs.insert(job.get_id(), job);
@@ -162,6 +162,63 @@ where
         T: 'static + Send + Sync,
     {
         self.extensions.insert(ext);
+    }
+
+    #[cfg(test)]
+    pub async fn run_debug(&mut self) {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let heap = self.heap.clone();
+        tokio::spawn(async move {
+            while let Some(next) = rx.recv().await {
+                heap.add(next);
+            }
+        });
+
+        loop {
+            // take the fist expired item
+            let item = self.heap.pop();
+
+            // if no item then wait 1 sec
+            if item.is_none() {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                continue;
+            }
+            let item = item.unwrap();
+
+            // find the associate job
+            if let Some(job) = self.jobs.get(&item.id) {
+                let mut job = job.box_clone();
+
+                let tz = self.tz.clone();
+                let e = self.extensions.clone();
+                let tx = tx.clone();
+
+                // spawn a task
+                tokio::spawn(async move {
+                    // calcute the delay time, and wait
+                    let t = item.time;
+                    // let n = chrono::Utc::now().timestamp() as u64;
+                    let n = timer_cacher::get_cached_timestamp();
+                    if t > n {
+                        tokio::time::sleep(std::time::Duration::from_secs(t - n)).await;
+                    }
+
+                    // prepare the next and send it out
+                    let next = job.next();
+                    if let Some(next) = next {
+                        if let Err(e) = tx.send(next) {
+                            println!("send next job failed: {}", e);
+                        }
+                    }
+
+                    // run
+                    let fut = job.run(e);
+                    fut.await;
+                });
+            }
+        }
+        // std::future::pending::<()>().await;
     }
 
     // pub fn add<Args, F>(&mut self, job: AsyncJob<Args, F>) -> &mut Scheduler<Tz>

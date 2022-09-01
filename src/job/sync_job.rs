@@ -75,7 +75,7 @@ where
         })
     }
 
-    fn next(&mut self, tz: Tz) -> Option<ScheduleItem> {
+    fn next(&mut self) -> Option<ScheduleItem> {
         // self.info.next(tz)
         if let Some(next_time) = self.iter.next().and_then(|x| Some(x.timestamp() as u64)) {
             Some(ScheduleItem {
@@ -87,19 +87,15 @@ where
         }
     }
 
-    fn next_job(&mut self, tz: Tz) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
-        self.info.next(tz);
+    fn next_job(&mut self) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
+        self.info.next(self.tz);
         Some(crate::scheduler::item::ScheduleJobItem {
             time: self.info.current_time,
             job: self.box_clone(),
         })
     }
 
-    fn run<'a: 'b, 'b>(
-        &'a self,
-        e: Extensions,
-        tz: Tz,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
+    fn run<'a: 'b, 'b>(&'a self, e: Extensions) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
         let f = self.f.clone();
         let schedule = self.info.jobschedule.clone();
         Box::pin(async move {
