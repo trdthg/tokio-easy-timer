@@ -1,6 +1,6 @@
 [package]
 name = "tokio-easy-timer"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["trdthg <trdthg@outlook.com>"]
 edition = "2021"
 description = "A tokio-based task scheduler, with a user-friendly API"
@@ -14,10 +14,10 @@ categories = ["asynchronous"]
 
 [dependencies]
 parking_lot = "0.12"
-tokio = { version="1.5", features=["rt", "rt-multi-thread", "time", "macros"]}
+tokio = { version="1.28", features=["rt", "rt-multi-thread", "time", "macros", "sync"]}
 
-cron = { path = "./cron" }
-timer-cacher = { path = "./timer-cacher" }
+cron = "0.12"
+timer-cache = { path = "./timer-cache" }
 timer-utils = { path = "./timer-utils" }
 
 chrono = "0.4"
@@ -26,5 +26,5 @@ async-trait = "0.1"
 dashmap = "5"
 
 [dev-dependencies]
-teloxide = { version = "0.10", features = ["macros", "auto-send"] }
+teloxide = { version = "0.12", features = ["macros", "auto-send"] }
 dotenv = "0.15"

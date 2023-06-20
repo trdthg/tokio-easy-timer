@@ -1,18 +1,10 @@
 use chrono::TimeZone;
 use parking_lot::Mutex;
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
-    sync::Arc,
-};
+use std::{cmp::Reverse, collections::BinaryHeap, sync::Arc};
 
-use crate::{extensions::Extensions, JobId};
+use crate::extensions::Extensions;
 
-use super::{
-    bucket::Buckets,
-    item::{Item, ScheduleJobItem},
-    BoxedJob, Scheduler,
-};
+use super::{task::ScheduleJobItem, BoxedJob, Scheduler};
 
 pub struct JobScheduler<Tz = chrono::Local>
 where
@@ -41,7 +33,7 @@ impl<Tz> JobBuckets<Tz> {
 }
 impl<Tz> JobBuckets<Tz> {
     fn pop(&self) -> Option<ScheduleJobItem<Tz>> {
-        self.inner.lock().pop().and_then(|x| Some(x.0))
+        self.inner.lock().pop().map(|x| x.0)
     }
 }
 
@@ -81,7 +73,6 @@ where
 
             let mut job = item.job.box_clone();
 
-            let tz = self.tz.clone();
             let e = self.extensions.clone();
             let tx = tx.clone();
 
@@ -90,7 +81,7 @@ where
                 // calcute the delay time, and wait
                 let t = item.time;
                 // let n = chrono::Utc::now().timestamp() as u64;
-                let n = timer_cacher::get_cached_timestamp();
+                let n = timer_cache::get_cached_timestamp();
                 if t > n {
                     tokio::time::sleep(std::time::Duration::from_secs(t - n)).await;
                 }
@@ -118,6 +109,12 @@ where
             self.heap.add(item);
         }
         self
+    }
+}
+
+impl Default for JobScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

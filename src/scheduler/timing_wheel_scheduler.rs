@@ -6,9 +6,9 @@ use std::{
 use chrono::TimeZone;
 use timer_utils::extensions::Extensions;
 
-use crate::{scheduler, BaseJob, Job, JobId, Scheduler};
+use crate::{JobId, Scheduler};
 
-use super::{item::ScheduleItem, BoxedJob};
+use super::{task::ScheduleItem, BoxedJob};
 
 pub struct TimingWheel {
     tick_duration: u64, // 每个格子的时间跨度
@@ -76,11 +76,11 @@ where
     delay_queue: VecDeque<ScheduleItem>, // todo 延时队列
 }
 
-impl TimingWheelScheduler {
-    pub fn new() -> Self {
+impl Default for TimingWheelScheduler {
+    fn default() -> Self {
         // tick_duration: u64, sizes: Vec<usize>
         let (tick_duration, sizes) = (1, vec![60, 60, 24]);
-        assert!(sizes.len() > 0);
+        assert!(!sizes.is_empty());
         let current_time = chrono::Utc::now().timestamp();
         let max_id = 0;
         let first_wheel = TimingWheel::new(sizes[0], tick_duration, current_time as u64);
@@ -119,7 +119,7 @@ where
         self.extensions.insert(ext);
     }
     pub fn with_tz(tick_duration: u64, sizes: Vec<usize>, tz: Tz) -> Self {
-        assert!(sizes.len() > 0);
+        assert!(!sizes.is_empty());
         let max_id = 0;
         let current_time = chrono::Utc::now().timestamp();
         let first_wheel = TimingWheel::new(sizes[0], tick_duration, current_time as u64);
@@ -149,12 +149,12 @@ where
             let expiration = item.time;
             let wheel = &self.wheels[i];
             // 2 + 22
-            if expiration < (wheel.current_time + wheel.tick_duration) as u64 {
+            if expiration < (wheel.current_time + wheel.tick_duration) {
                 // 任务已经过期
                 return None;
-            } else if expiration < (wheel.current_time + wheel.interval) as u64 {
+            } else if expiration < (wheel.current_time + wheel.interval) {
                 // 任务可以插入当前时间轮
-                let virtual_id = expiration / wheel.tick_duration as u64;
+                let virtual_id = expiration / wheel.tick_duration;
                 // let bucket = &wheel.buckets[(virtual_id as usize % wheel.wheel_size)];
                 return Some((i, virtual_id as usize % wheel.wheel_size));
                 // // 设置过期时间，这里也取整了，即可以被 tickMs 整除
@@ -170,7 +170,7 @@ where
                 continue;
             }
         }
-        return None;
+        None
     }
 
     // #[cfg(test)]
@@ -180,7 +180,7 @@ where
         for wheel_index in 0..3 {
             let mut b = false;
             for (i, link) in self.wheels[wheel_index].buckets.inner.iter().enumerate() {
-                if link.len() > 0 {
+                if !link.is_empty() {
                     print!(
                         "{}\t{}\t{}\t{}\t",
                         wheel_index,
@@ -225,8 +225,7 @@ where
 
         *current_time += 1;
         let mut res = vec![];
-        for i in 0..wheels.len() {
-            let wheel = &mut wheels[i];
+        for wheel in &mut wheels.iter_mut() {
             let end = wheel.advance_to(*current_time);
 
             let bucket_index = wheel.current_time as usize % wheel.wheel_size;
@@ -239,7 +238,7 @@ where
                 wheel.current_time,
                 wheel.wheel_size
             );
-            if bucket.len() > 0 {
+            if bucket.is_empty() {
                 let mut link = LinkedList::new();
                 link.append(bucket);
                 res.push(link);
@@ -258,7 +257,7 @@ where
         }
     }
 
-    fn add_to_schedule(&mut self, mut item: ScheduleItem) {
+    fn add_to_schedule(&mut self, item: ScheduleItem) {
         // println!("{} {}", item.time, self.current_time);
         if let Some((layer, pos)) = self.get_layer(&item) {
             let wheel = &mut self.wheels[layer];
@@ -315,7 +314,7 @@ where
     <Tz as TimeZone>::Offset: Send + Sync,
 {
     fn get_tz(&self) -> Tz {
-        self.tz.clone()
+        self.tz
     }
 
     fn add_job(&mut self, mut job: BoxedJob<Tz>) -> &mut dyn Scheduler<Tz> {
@@ -350,7 +349,6 @@ where
                     let next = job.next();
 
                     let e = self.extensions.clone();
-                    let tz = self.tz.clone();
                     let job = job.box_clone();
                     tokio::spawn(async move {
                         let fut = job.run(e);
@@ -368,6 +366,7 @@ where
         }
     }
 }
+
 #[cfg(test)]
 mod test {
 

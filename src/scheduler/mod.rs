@@ -2,8 +2,8 @@ use crate::job::{Job, SyncJobBuilder};
 
 pub mod bucket;
 mod heap_scheduler;
-pub mod item;
 mod job_scheduler;
+pub mod task;
 use chrono::TimeZone;
 pub use heap_scheduler::HeapScheduler;
 pub use job_scheduler::JobScheduler;
@@ -28,7 +28,7 @@ pub trait Scheduler<Tz: TimeZone> {
     fn get_tz(&self) -> Tz;
 
     async fn run_pending(&mut self) {
-        timer_cacher::init();
+        timer_cache::init();
         self.run().await;
     }
 

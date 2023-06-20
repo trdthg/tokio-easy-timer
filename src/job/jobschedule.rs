@@ -3,9 +3,11 @@ use chrono::{Datelike, TimeZone};
 use cron::Schedule;
 use std::str::FromStr;
 
+use super::{DateTuple, TimeTuple};
+
 #[derive(Clone)]
 pub struct JobSchedule {
-    pub since: (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>),
+    pub since: (Option<DateTuple>, Option<TimeTuple>),
     pub delay: u64,
     pub schedule: Schedule,
     pub is_async: bool,
@@ -31,12 +33,18 @@ impl JobSchedule {
 }
 
 pub struct JobScheduleBuilder {
-    pub since: (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>),
+    pub since: (Option<DateTuple>, Option<TimeTuple>),
     pub delay: u64,
     pub cron: Vec<Option<String>>,
     pub is_async: bool,
     pub repeat: u32,
     pub interval: u64,
+}
+
+impl Default for JobScheduleBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl JobScheduleBuilder {
@@ -68,7 +76,7 @@ impl JobScheduleBuilder {
             .enumerate()
             .map(|(i, x)| {
                 // x.as_deref().unwrap_or("0")
-                x.as_deref().unwrap_or_else(|| match i {
+                x.as_deref().unwrap_or(match i {
                     0 | 1 | 2 => "0",
                     _ => "*",
                 })
@@ -77,10 +85,10 @@ impl JobScheduleBuilder {
             .join(" ");
 
         let s = Schedule::from_str(s.as_str())
-            .expect(&format!("cron expression is not valid: {}", s.as_str()));
+            .unwrap_or_else(|_| panic!("cron expression is not valid: {}", s.as_str()));
         JobSchedule {
             schedule: s,
-            repeat: self.repeat as u32,
+            repeat: self.repeat,
             interval: self.interval,
             since: self.since,
             is_async: self.is_async,
@@ -164,7 +172,7 @@ macro_rules! every_start {
                 self
             }
 
-            pub fn from_to(&mut self, start: Interval, end: Interval) -> &mut Self {
+            pub fn since_to(&mut self, start: Interval, end: Interval) -> &mut Self {
                 match (start, end) {
                     $(
                         (Interval::$Varient(start), Interval::$Varient(end)) => {

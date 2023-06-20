@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use crate::job::JobId;
 
 use super::BoxedJob;

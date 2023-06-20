@@ -33,13 +33,13 @@ pub enum Interval {
 }
 
 impl Interval {
-    pub(crate) fn to_sec(&self) -> u64 {
+    pub(crate) fn to_sec(self) -> u64 {
         match self {
-            Interval::Seconds(x) => *x as u64,
-            Interval::Minutes(x) => *x as u64 * 60,
-            Interval::Hours(x) => *x as u64 * 3600,
-            Interval::Days(x) => *x as u64 * 3600 * 24,
-            Interval::Weeks(x) => *x as u64 * 3600 * 24 * 7,
+            Interval::Seconds(x) => x as u64,
+            Interval::Minutes(x) => x as u64 * 60,
+            Interval::Hours(x) => x as u64 * 3600,
+            Interval::Days(x) => x as u64 * 3600 * 24,
+            Interval::Weeks(x) => x as u64 * 3600 * 24 * 7,
             _ => unimplemented!(),
         }
     }

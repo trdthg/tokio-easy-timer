@@ -13,13 +13,16 @@ use crate::{
     extensions::Extensions,
     interval::Interval,
     prelude::TimeUnits,
-    scheduler::item::{ScheduleItem, ScheduleJobItem},
+    scheduler::task::{ScheduleItem, ScheduleJobItem},
 };
 use async_trait::async_trait;
 pub use base_job::BaseJobBuilder;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JobId(pub usize);
+
+type DateTuple = (i32, u32, u32);
+type TimeTuple = (u32, u32, u32);
 
 #[async_trait]
 pub trait Job<Tz> {
@@ -71,8 +74,8 @@ pub trait JobBuilder {
     }
 
     /// Specify a specific run time, equivalent to the corn expression 'm-n'
-    fn from_to(&mut self, start: Interval, end: Interval) -> &mut Self {
-        self.get_mut_cron_builder().from_to(start, end);
+    fn since_to(&mut self, start: Interval, end: Interval) -> &mut Self {
+        self.get_mut_cron_builder().since_to(start, end);
         self
     }
 
@@ -87,11 +90,11 @@ pub trait JobBuilder {
         sec: Option<u32>,
     ) -> &mut Self {
         year.map(|x| self.at((x as u32).year()));
-        month.map(|x| self.at((x as u32).month()));
-        day.map(|x| self.at((x as u32).day()));
-        hour.map(|x| self.at((x as u32).hour()));
-        min.map(|x| self.at((x as u32).minute()));
-        sec.map(|x| self.at((x as u32).second()));
+        month.map(|x| self.at((x).month()));
+        day.map(|x| self.at((x).day()));
+        hour.map(|x| self.at((x).hour()));
+        min.map(|x| self.at((x).minute()));
+        sec.map(|x| self.at((x).second()));
         self
     }
 
@@ -107,7 +110,7 @@ pub trait JobBuilder {
         self
     }
 
-    fn get_mut_since(&mut self) -> &mut (Option<(i32, u32, u32)>, Option<(u32, u32, u32)>);
+    fn get_mut_since(&mut self) -> &mut (Option<DateTuple>, Option<TimeTuple>);
 
     /// Specify the datetime after which the task will start, the same as `since`
     fn since_datetime(

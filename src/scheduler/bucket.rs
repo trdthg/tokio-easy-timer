@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use super::item::ScheduleItem;
+use super::task::ScheduleItem;
 
 pub trait Buckets {
     fn new() -> Self;
@@ -36,12 +36,9 @@ impl ItemBucket {
         self.items.lock().push(item);
     }
     pub fn get_items(&self) -> Vec<ScheduleItem> {
-        if let mut res = self.items.lock() {
-            let ress = std::mem::replace(res.as_mut(), vec![]);
-            *res = vec![];
-            return ress;
-        }
-        vec![]
+        let mut res = self.items.lock();
+        let ress = std::mem::take(res.as_mut());
+        ress
     }
 }
 

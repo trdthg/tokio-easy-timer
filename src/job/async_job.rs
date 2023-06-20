@@ -1,18 +1,10 @@
 use std::{future::Future, marker::PhantomData, pin::Pin, time::Duration};
 
-use chrono::{DateTime, Datelike, TimeZone};
+use chrono::TimeZone;
 
-use crate::{
-    extensions::Extensions,
-    interval::Interval,
-    scheduler::{item::ScheduleItem, BoxedJob},
-};
+use crate::{extensions::Extensions, scheduler::task::ScheduleItem};
 
-use super::{
-    base_job::BaseJob,
-    jobschedule::{JobSchedule, JobScheduleBuilder},
-    AsyncHandler, Job, JobBuilder, JobId,
-};
+use super::{base_job::BaseJob, AsyncHandler, Job, JobId};
 
 pub struct AsyncJob<Args, F, Tz: TimeZone> {
     pub tz: Tz,
@@ -37,7 +29,7 @@ where
     pub fn with_tz<Tz: TimeZone>(&self, tz: Tz) -> AsyncJob<Args, F, Tz> {
         AsyncJob {
             tz: tz.clone(),
-            f: self.f.clone(),
+            f: self.f,
             _phantom: PhantomData::default(),
             info: self.info.clone(),
             iter: self.info.jobschedule.schedule.upcoming_owned(tz),
@@ -55,20 +47,16 @@ where
 {
     fn box_clone(&self) -> Box<(dyn Job<Tz> + Send + 'static)> {
         Box::new(AsyncJob {
-            tz: self.tz.clone(),
-            f: self.f.clone(),
+            tz: self.tz,
+            f: self.f,
             _phantom: PhantomData::default(),
             info: self.info.clone(),
-            iter: self
-                .info
-                .jobschedule
-                .schedule
-                .upcoming_owned(self.tz.clone()),
+            iter: self.info.jobschedule.schedule.upcoming_owned(self.tz),
         })
     }
 
     fn next(&mut self) -> Option<ScheduleItem> {
-        if let Some(next_time) = self.iter.next().and_then(|x| Some(x.timestamp() as u64)) {
+        if let Some(next_time) = self.iter.next().map(|x| x.timestamp() as u64) {
             Some(ScheduleItem {
                 id: self.info.id,
                 time: next_time,
@@ -78,16 +66,16 @@ where
         }
     }
 
-    fn next_job(&mut self) -> Option<crate::scheduler::item::ScheduleJobItem<Tz>> {
+    fn next_job(&mut self) -> Option<crate::scheduler::task::ScheduleJobItem<Tz>> {
         self.info.next(self.tz);
-        Some(crate::scheduler::item::ScheduleJobItem {
+        Some(crate::scheduler::task::ScheduleJobItem {
             time: self.info.current_time,
             job: self.box_clone(),
         })
     }
 
     fn run<'a: 'b, 'b>(&'a self, e: Extensions) -> Pin<Box<dyn Future<Output = ()> + Send + 'b>> {
-        let f = self.f.clone();
+        let f = self.f;
         let schedule = self.info.jobschedule.clone();
         Box::pin(async move {
             // handle delay

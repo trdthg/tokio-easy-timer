@@ -6,9 +6,9 @@ use std::{
     sync::Arc,
 };
 
-use crate::{extensions::Extensions, job::SyncJobBuilder, JobId};
+use crate::{extensions::Extensions, JobId};
 
-use super::{bucket::Buckets, item::ScheduleItem, BoxedJob, Scheduler};
+use super::{bucket::Buckets, task::ScheduleItem, BoxedJob, Scheduler};
 
 pub struct HeapScheduler<Tz = chrono::Local>
 where
@@ -38,7 +38,7 @@ impl Buckets for HeapItemBuckets {
 }
 impl HeapItemBuckets {
     fn pop(&self) -> Option<ScheduleItem> {
-        self.inner.lock().pop().and_then(|x| Some(x.0))
+        self.inner.lock().pop().map(|x| x.0)
     }
 }
 
@@ -49,7 +49,7 @@ where
     <Tz as TimeZone>::Offset: Send + Sync,
 {
     fn get_tz(&self) -> Tz {
-        self.tz.clone()
+        self.tz
     }
     /// Start the timer, block the current thread.
     async fn run(&mut self) {
@@ -77,7 +77,7 @@ where
             if let Some(job) = self.jobs.get(&item.id) {
                 let mut job = job.box_clone();
 
-                let tz = self.tz.clone();
+                let _tz = self.tz;
                 let e = self.extensions.clone();
                 let tx = tx.clone();
 
@@ -86,7 +86,7 @@ where
                     // calcute the delay time, and wait
                     let t = item.time;
                     // let n = chrono::Utc::now().timestamp() as u64;
-                    let n = timer_cacher::get_cached_timestamp();
+                    let n = timer_cache::get_cached_timestamp();
                     if t > n {
                         tokio::time::sleep(std::time::Duration::from_secs(t - n)).await;
                     }
@@ -116,6 +116,12 @@ where
         }
         self.jobs.insert(job.get_id(), job);
         self
+    }
+}
+
+impl Default for HeapScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -199,7 +205,7 @@ where
                     // calcute the delay time, and wait
                     let t = item.time;
                     // let n = chrono::Utc::now().timestamp() as u64;
-                    let n = timer_cacher::get_cached_timestamp();
+                    let n = timer_cache::get_cached_timestamp();
                     if t > n {
                         tokio::time::sleep(std::time::Duration::from_secs(t - n)).await;
                     }

@@ -2,16 +2,13 @@ use std::marker::PhantomData;
 
 use chrono::TimeZone;
 
-use crate::{
-    interval::Interval,
-    scheduler::{item::ScheduleItem, BoxedJob},
-};
+use crate::{interval::Interval, scheduler::task::ScheduleItem};
 
 use super::{
     async_job::AsyncJobBuilder,
-    jobschedule::{self, JobSchedule, JobScheduleBuilder},
+    jobschedule::{JobSchedule, JobScheduleBuilder},
     sync_job::SyncJobBuilder,
-    AsyncHandler, AsyncJob, Job, JobBuilder, JobId, SyncHandler, SyncJob,
+    AsyncHandler, JobBuilder, JobId, SyncHandler,
 };
 
 #[derive(Clone)]
@@ -44,7 +41,7 @@ impl BaseJob {
             return None;
         }
 
-        let mut min = u64::MAX;
+        let _min = u64::MAX;
 
         if let Some(next_time) = self
             .jobschedule
@@ -52,7 +49,7 @@ impl BaseJob {
             .upcoming(tz)
             .take(1)
             .next()
-            .and_then(|x| Some(x.timestamp() as u64))
+            .map(|x| x.timestamp() as u64)
         {
             self.current_time = next_time;
             Some(ScheduleItem {
@@ -64,25 +61,24 @@ impl BaseJob {
         }
     }
 
-    fn get_id(&self) -> JobId {
-        self.id
-    }
+    // fn get_id(&self) -> JobId {
+    //     self.id
+    // }
 
-    fn set_id(&mut self, id: JobId) {
-        self.id = id;
-    }
+    // fn set_id(&mut self, id: JobId) {
+    //     self.id = id;
+    // }
 
-    fn start(&mut self) {
-        self.cancel = false;
-    }
+    // fn start(&mut self) {
+    //     self.cancel = false;
+    // }
 
-    fn stop(&mut self) {
-        self.cancel = true;
-    }
+    // fn stop(&mut self) {
+    //     self.cancel = true;
+    // }
 }
 
 pub struct BaseJobBuilder {
-    id: JobId,
     jobschedules: Option<Vec<JobSchedule>>,
     builder: JobScheduleBuilder,
 }
@@ -98,7 +94,7 @@ impl BaseJobBuilder {
         let mut res = vec![];
         for x in schedules.into_iter() {
             let job = SyncJobBuilder {
-                f: f.clone(),
+                f,
                 _phantom: PhantomData,
                 info: BaseJob::new(x),
             };
@@ -117,7 +113,7 @@ impl BaseJobBuilder {
         let mut res = vec![];
         for x in schedules.into_iter() {
             let job = AsyncJobBuilder {
-                f: f.clone(),
+                f,
                 _phantom: PhantomData,
                 info: BaseJob::new(x),
             };
@@ -131,7 +127,6 @@ impl JobBuilder for BaseJobBuilder {
     fn new() -> Self {
         Self {
             builder: JobScheduleBuilder::new(),
-            id: JobId(0),
             jobschedules: None,
         }
     }
